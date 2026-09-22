@@ -12,6 +12,20 @@ struct SettingsSheet: View {
                     toggle("背景音乐", isOn: $store.musicEnabled)
                     toggle("游戏音效", isOn: $store.soundEnabled)
                     toggle("震动反馈", isOn: $store.hapticEnabled)
+                    Button("游戏规则") {
+                        store.audio.click()
+                        dismiss()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            store.showRules = true
+                        }
+                    }
+                    .font(Lucky.bold(16))
+                    .foregroundStyle(Lucky.gold)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(Lucky.maroon, in: RoundedRectangle(cornerRadius: 16))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Lucky.gold.opacity(0.45), lineWidth: 1))
+
                     Button("重置本地金币") {
                         store.resetProgress()
                         store.audio.click()

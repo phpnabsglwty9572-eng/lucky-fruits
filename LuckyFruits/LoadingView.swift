@@ -2,74 +2,84 @@ import SwiftUI
 
 struct LoadingView: View {
     @EnvironmentObject private var store: GameStore
-    @State private var pulse = false
-    @State private var spin = false
+    @State private var glow = false
 
     var body: some View {
         DesignCanvas {
-            ZStack {
-                Image("imgBg")
+            ZStack(alignment: .topLeading) {
+                Image("imgLoadBg")
                     .resizable()
                     .scaledToFill()
                     .frame(width: 375, height: 667)
                     .clipped()
-                    .blur(radius: 16)
-                    .allowsHitTesting(false)
-                Lucky.void.opacity(0.64)
                     .allowsHitTesting(false)
 
-                VStack(spacing: 22) {
-                    Spacer(minLength: 70)
-                    Image("imgTitle")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 260)
-                        .shadow(color: Lucky.gold.opacity(0.55), radius: pulse ? 18 : 6)
-                    ZStack {
-                        Image("symSeven")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 128, height: 108)
-                            .rotationEffect(.degrees(spin ? 8 : -8))
-                            .scaleEffect(pulse ? 1.06 : 0.94)
-                            .shadow(color: Lucky.gold.opacity(0.5), radius: 16)
-                    }
-                    .frame(width: 160, height: 160)
-                    .background(Lucky.maroon.opacity(0.75), in: RoundedRectangle(cornerRadius: 20))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 20)
-                            .stroke(Lucky.gold, lineWidth: 3)
-                    )
+                Image("imgLoadLogo")
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(width: 335, height: 126)
+                    .shadow(color: Lucky.gold.opacity(glow ? 0.55 : 0.2), radius: glow ? 16 : 6)
+                    .position(x: 19 + 335 / 2, y: 172 + 126 / 2)
 
-                    VStack(spacing: 8) {
-                        GeometryReader { geo in
-                            ZStack(alignment: .leading) {
-                                Capsule().fill(Lucky.maroon)
-                                Capsule()
-                                    .fill(LinearGradient(colors: [Lucky.wine, Lucky.gold], startPoint: .leading, endPoint: .trailing))
-                                    .frame(width: max(10, geo.size.width * store.loadProgress))
-                            }
-                            .overlay(Capsule().stroke(Lucky.gold.opacity(0.7), lineWidth: 1))
-                        }
-                        .frame(height: 10)
-                        .padding(.horizontal, 48)
-                        Text("正在点亮灯牌… \(Int(store.loadProgress * 100))%")
-                            .font(Lucky.bold(14))
-                            .foregroundStyle(Lucky.cream)
-                        Text("LUCKY FRUITS")
-                            .font(Lucky.extra(11))
-                            .tracking(3)
-                            .foregroundStyle(Lucky.gold)
-                    }
-                    Spacer(minLength: 40)
-                }
+                progressBoard
+                    .position(x: 21 + 333 / 2, y: 335 + 106 / 2)
             }
             .frame(width: 375, height: 667)
         }
         .onAppear {
-            withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { pulse = true }
-            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) { spin = true }
+            withAnimation(.easeInOut(duration: 1.2).repeatForever(autoreverses: true)) { glow = true }
             Task { await store.bootstrap() }
         }
+    }
+
+    private var progressBoard: some View {
+        let trackInsetX: CGFloat = 30
+        let trackY: CGFloat = 29
+        let trackH: CGFloat = 30
+        let trackW: CGFloat = 333 - trackInsetX * 2
+        let fill = max(0.04, min(1, store.loadProgress))
+
+        return ZStack(alignment: .topLeading) {
+            Image("imgLoadBar")
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .frame(width: 333, height: 106)
+
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.black.opacity(0.92))
+                .frame(width: trackW, height: trackH)
+                .offset(x: trackInsetX, y: trackY)
+
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(
+                    LinearGradient(
+                        colors: [
+                            Color(red: 1, green: 214 / 255, blue: 90 / 255),
+                            Color(red: 210 / 255, green: 140 / 255, blue: 28 / 255)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+                .frame(width: max(12, trackW * fill), height: trackH)
+                .offset(x: trackInsetX, y: trackY)
+                .shadow(color: Lucky.gold.opacity(0.45), radius: 6)
+                .animation(.easeOut(duration: 0.12), value: store.loadProgress)
+
+            Text("LOADING \(Int(store.loadProgress * 100))%")
+                .font(Lucky.extra(13))
+                .tracking(0.6)
+                .foregroundStyle(Lucky.gold)
+                .minimumScaleFactor(0.7)
+                .lineLimit(1)
+                .frame(width: 148, height: 22)
+                .background(Color(red: 16 / 255, green: 8 / 255, blue: 8 / 255))
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .position(x: 166.5, y: 90)
+        }
+        .frame(width: 333, height: 106)
+        .allowsHitTesting(false)
     }
 }

@@ -14,27 +14,30 @@ struct GameView: View {
                     .clipped()
                     .allowsHitTesting(false)
 
-                artTap("btnHome", w: 51, h: 51, x: 12, y: 5) {
+                Image("imgHudBar")
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFill()
+                    .frame(width: 375, height: 69)
+                    .clipped()
+                    .position(x: 187.5, y: 34.5)
+                    .allowsHitTesting(false)
+
+                artTap("btnHome", w: 50, h: 50, x: 12, y: 10) {
                     store.audio.click()
                     withAnimation { store.route = .home }
                 }
+
                 coinsHud
-                    .position(x: 119 + 68, y: 6 + 25.5)
-                artTap("btnSettings", w: 51, h: 51, x: 311, y: 5) {
+                    .position(x: 187.5, y: 35.5)
+
+                artTap("btnSettings", w: 50, h: 50, x: 313, y: 10) {
                     store.audio.click()
                     store.showSettings = true
                 }
 
-                Image("imgTitle")
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
-                    .frame(width: 206, height: 39)
-                    .position(x: 84 + 103, y: 114 + 19.5)
-                    .allowsHitTesting(false)
-
                 reelBoard
-                    .position(x: 19 + 168, y: 133 + 161.5)
+                    .position(x: 20 + 335 / 2, y: 108 + 341 / 2)
 
                 if !store.banner.isEmpty {
                     Text(store.banner)
@@ -47,13 +50,19 @@ struct GameView: View {
                         .background(Lucky.maroon.opacity(0.88), in: Capsule())
                         .overlay(Capsule().stroke(Lucky.gold.opacity(0.55), lineWidth: 1))
                         .frame(width: 220)
-                        .position(x: 187.5, y: 62)
+                        .position(x: 187.5, y: 90)
                         .allowsHitTesting(false)
                 }
 
-                betButton("btnBet10", w: 74, h: 70, x: 19, y: 478, selected: store.bet == 10) { store.setBet(10) }
-                betButton("btnBet50", w: 74, h: 70, x: 99, y: 478, selected: store.bet == 50) { store.setBet(50) }
-                betButton("btnMaxBet", w: 72, h: 70, x: 178, y: 478, selected: store.bet == 100) { store.setBet(100) }
+                betPlate(top: "BET", bottom: "10", x: 19, y: 468, selected: store.bet == 10) {
+                    store.setBet(10)
+                }
+                betPlate(top: "BET", bottom: "50", x: 99, y: 468, selected: store.bet == 50) {
+                    store.setBet(50)
+                }
+                betPlate(top: "MAX", bottom: "BET", x: 178, y: 468, selected: store.bet != 10 && store.bet != 50) {
+                    store.setBet(100)
+                }
 
                 Button {
                     Task { await store.spin() }
@@ -62,13 +71,16 @@ struct GameView: View {
                         .resizable()
                         .interpolation(.high)
                         .scaledToFit()
-                        .frame(width: 112, height: 112)
-                        .shadow(color: Lucky.gold.opacity(store.isSpinning ? 0.2 : (pulse ? 0.55 : 0.2)), radius: pulse ? 12 : 4)
+                        .frame(width: 111, height: 111)
+                        .shadow(
+                            color: Lucky.gold.opacity(store.isSpinning ? 0.2 : (pulse ? 0.55 : 0.2)),
+                            radius: pulse ? 12 : 4
+                        )
                         .opacity(store.canSpin || store.isSpinning ? 1 : 0.55)
                 }
                 .buttonStyle(PressScale())
                 .disabled(!store.canSpin)
-                .position(x: 254 + 56, y: 456 + 56)
+                .position(x: 254 + 55.5, y: 448 + 55.5)
 
                 if store.showWinBurst {
                     WinBurstOverlay(amount: store.lastWin)
@@ -90,38 +102,47 @@ struct GameView: View {
                 .resizable()
                 .interpolation(.high)
                 .scaledToFit()
-                .frame(width: 136, height: 51)
-            Text("\(store.coins)")
-                .font(Lucky.black(16))
-                .foregroundStyle(Lucky.gold)
-                .minimumScaleFactor(0.5)
-                .lineLimit(1)
-                .frame(width: 100, height: 18)
-                .background(Color(red: 0.36, green: 0.06, blue: 0.09))
-                .offset(y: 10)
+                .frame(width: 135, height: 55)
+            VStack(spacing: 0) {
+                Text("COINS")
+                    .font(Lucky.bold(8))
+                    .tracking(1.6)
+                    .foregroundStyle(Lucky.goldSoft.opacity(0.92))
+                Text("\(store.coins)")
+                    .font(Lucky.black(18))
+                    .foregroundStyle(Lucky.gold)
+                    .minimumScaleFactor(0.45)
+                    .lineLimit(1)
+                    .frame(width: 108)
+            }
+            .offset(y: 1)
         }
-        .frame(width: 136, height: 51)
+        .frame(width: 135, height: 55)
         .allowsHitTesting(false)
     }
 
     private var reelBoard: some View {
-        let padL: CGFloat = 28
-        let padT: CGFloat = 54
-        let padR: CGFloat = 28
-        let padB: CGFloat = 30
-        let gap: CGFloat = 7
-        let cellW = (336 - padL - padR - gap * 2) / 3
-        let cellH = (323 - padT - padB - gap * 2) / 3
+        let cols: [CGFloat] = [26, 123, 219]
+        let rows: [CGFloat] = [42, 146, 238]
+        let cellW: CGFloat = 88
+        let cellH: [CGFloat] = [92, 80, 80]
 
         return ZStack(alignment: .topLeading) {
             Image("imgReel")
                 .resizable()
                 .interpolation(.high)
                 .scaledToFit()
-                .frame(width: 336, height: 323)
+                .frame(width: 335, height: 341)
+
+            Image("imgTitle")
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .frame(width: 188, height: 34)
+                .position(x: 167.5, y: 20)
 
             if store.isSpinning {
-                MarqueeRing(pulse: pulse, width: 336, height: 323)
+                MarqueeRing(pulse: pulse, width: 335, height: 341)
                     .blendMode(.plusLighter)
                     .opacity(0.45)
             }
@@ -130,32 +151,26 @@ struct GameView: View {
                 ForEach(0..<3, id: \.self) { c in
                     let hit = store.hitRows.contains(r)
                     ZStack {
-                        RoundedRectangle(cornerRadius: 8)
-                            .fill(Color.black)
                         Image(store.grid[r][c].asset)
                             .resizable()
                             .scaledToFit()
-                            .padding(3)
+                            .padding(4)
                             .blur(radius: store.reelBlur)
                             .offset(y: store.spinningColumn == c ? 8 : 0)
                             .animation(.easeInOut(duration: 0.07), value: store.spinningColumn)
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .frame(width: cellW, height: cellH[r])
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
                             .stroke(hit && !store.isSpinning ? Lucky.gold : Color.clear, lineWidth: 2.5)
                             .shadow(color: hit && !store.isSpinning ? Lucky.gold.opacity(0.9) : .clear, radius: pulse ? 10 : 4)
                     )
                     .scaleEffect(hit && !store.isSpinning ? (pulse ? 1.04 : 1.0) : 1)
-                    .frame(width: cellW, height: cellH)
-                    .offset(
-                        x: padL + CGFloat(c) * (cellW + gap),
-                        y: padT + CGFloat(r) * (cellH + gap)
-                    )
+                    .offset(x: cols[c], y: rows[r])
                 }
             }
         }
-        .frame(width: 336, height: 323)
+        .frame(width: 335, height: 341)
         .clipped()
         .allowsHitTesting(false)
     }
@@ -172,21 +187,35 @@ struct GameView: View {
         .position(x: x + w / 2, y: y + h / 2)
     }
 
-    private func betButton(_ image: String, w: CGFloat, h: CGFloat, x: CGFloat, y: CGFloat, selected: Bool, action: @escaping () -> Void) -> some View {
+    private func betPlate(top: String, bottom: String, x: CGFloat, y: CGFloat, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(image)
-                .resizable()
-                .interpolation(.high)
-                .scaledToFit()
-                .frame(width: w, height: h)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(selected ? Lucky.gold : Color.clear, lineWidth: 3)
-                )
-                .shadow(color: selected ? Lucky.gold.opacity(0.7) : .clear, radius: selected ? 8 : 0)
+            ZStack {
+                Image("btnBetPlate")
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(width: 72, height: 63)
+                VStack(spacing: -1) {
+                    Text(top)
+                        .font(Lucky.black(11))
+                        .tracking(0.6)
+                    Text(bottom)
+                        .font(Lucky.black(15))
+                }
+                .foregroundStyle(Lucky.gold)
+                .shadow(color: .black.opacity(0.45), radius: 1, y: 1)
+                .offset(y: 1)
+            }
+            .frame(width: 74, height: 70)
+            .overlay(
+                RoundedRectangle(cornerRadius: 10)
+                    .stroke(selected ? Lucky.gold : Color.clear, lineWidth: 3)
+            )
+            .shadow(color: selected ? Lucky.gold.opacity(0.7) : .clear, radius: selected ? 8 : 0)
+            .brightness(selected ? 0.06 : 0)
         }
         .buttonStyle(PressScale())
         .disabled(store.isSpinning)
-        .position(x: x + w / 2, y: y + h / 2)
+        .position(x: x + 37, y: y + 35)
     }
 }

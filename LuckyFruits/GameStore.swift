@@ -71,7 +71,7 @@ final class GameStore: ObservableObject {
     @Published var grid: [[SlotSymbol]]
     @Published var isSpinning = false
     @Published var lastWin = 0
-    @Published var banner = "三连成行 · 赢取金币"
+    @Published var banner = ""
     @Published var hitRows: Set<Int> = []
     @Published var showWinBurst = false
     @Published var showSettings = false

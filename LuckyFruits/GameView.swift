@@ -23,15 +23,15 @@ struct GameView: View {
                     .position(x: 187.5, y: 34.5)
                     .allowsHitTesting(false)
 
-                artTap("btnHome", w: 50, h: 50, x: 12, y: 10) {
+                artTap("btnHome", w: 50, h: 50, x: 12, y: 10, disabled: store.isSpinning) {
                     store.audio.click()
-                    withAnimation { store.route = .home }
+                    withAnimation { store.leaveGame() }
                 }
 
                 coinsHud
                     .position(x: 187.5, y: 35.5)
 
-                artTap("btnSettings", w: 50, h: 50, x: 313, y: 10) {
+                artTap("btnSettings", w: 50, h: 50, x: 313, y: 10, disabled: store.isSpinning) {
                     store.audio.click()
                     store.showSettings = true
                 }
@@ -49,7 +49,7 @@ struct GameView: View {
                         .padding(.vertical, 4)
                         .background(Lucky.maroon.opacity(0.88), in: Capsule())
                         .overlay(Capsule().stroke(Lucky.gold.opacity(0.55), lineWidth: 1))
-                        .frame(width: 220)
+                        .frame(width: 280)
                         .position(x: 187.5, y: 90)
                         .allowsHitTesting(false)
                 }
@@ -85,7 +85,10 @@ struct GameView: View {
                 if store.showWinBurst {
                     WinBurstOverlay(amount: store.lastWin)
                         .frame(width: 375, height: 667)
-                        .onTapGesture { withAnimation { store.showWinBurst = false } }
+                        .onTapGesture { withAnimation { store.dismissWinBurst() } }
+                } else if let end = store.stageEnd {
+                    StageEndOverlay(end: end)
+                        .frame(width: 375, height: 667)
                 }
             }
             .frame(width: 375, height: 667)
@@ -104,11 +107,11 @@ struct GameView: View {
                 .scaledToFit()
                 .frame(width: 135, height: 55)
             VStack(spacing: 0) {
-                Text("COINS")
+                Text(store.mode == .stage ? "GOAL" : "COINS")
                     .font(Lucky.bold(8))
                     .tracking(1.6)
                     .foregroundStyle(Lucky.goldSoft.opacity(0.92))
-                Text("\(store.coins)")
+                Text(store.mode == .stage ? "\(store.stageWon)/\(store.stageTarget)" : "\(store.coins)")
                     .font(Lucky.black(18))
                     .foregroundStyle(Lucky.gold)
                     .minimumScaleFactor(0.45)
@@ -149,7 +152,7 @@ struct GameView: View {
 
             ForEach(0..<3, id: \.self) { r in
                 ForEach(0..<3, id: \.self) { c in
-                    let hit = store.hitRows.contains(r)
+                    let hit = store.hitCells.contains(r * 3 + c)
                     ZStack {
                         Image(store.grid[r][c].asset)
                             .resizable()
@@ -175,7 +178,7 @@ struct GameView: View {
         .allowsHitTesting(false)
     }
 
-    private func artTap(_ image: String, w: CGFloat, h: CGFloat, x: CGFloat, y: CGFloat, action: @escaping () -> Void) -> some View {
+    private func artTap(_ image: String, w: CGFloat, h: CGFloat, x: CGFloat, y: CGFloat, disabled: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(image)
                 .resizable()
@@ -184,6 +187,8 @@ struct GameView: View {
                 .frame(width: w, height: h)
         }
         .buttonStyle(PressScale())
+        .disabled(disabled)
+        .opacity(disabled ? 0.45 : 1)
         .position(x: x + w / 2, y: y + h / 2)
     }
 

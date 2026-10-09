@@ -24,7 +24,7 @@ struct HomeView: View {
 
                 Button {
                     store.audio.click()
-                    withAnimation { store.route = .game }
+                    withAnimation { store.route = .modes }
                 } label: {
                     Image("btnStartGame")
                         .resizable()

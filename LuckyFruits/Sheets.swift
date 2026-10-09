@@ -26,7 +26,7 @@ struct SettingsSheet: View {
                     .background(Lucky.maroon, in: RoundedRectangle(cornerRadius: 16))
                     .overlay(RoundedRectangle(cornerRadius: 16).stroke(Lucky.gold.opacity(0.45), lineWidth: 1))
 
-                    Button("重置本地金币") {
+                    Button("重置金币与关卡") {
                         store.resetProgress()
                         store.audio.click()
                     }
@@ -96,19 +96,27 @@ struct RulesSheet: View {
         NavigationStack {
             ZStack {
                 Lucky.void.ignoresSafeArea()
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("任意一行三枚相同即中奖，可同时中多行。倍率按符号结算。")
-                        .foregroundStyle(Lucky.cream)
-                    Text("7 ×20   BAR ×12   星 ×10   铃 ×8")
-                        .foregroundStyle(Lucky.gold)
-                    Text("西瓜 ×6   葡萄 ×5   橙 ×4   柠檬 ×3   樱桃 ×2")
-                        .foregroundStyle(Lucky.gold)
-                    Text("BET 10 / 50 / MAX(100)。余额不足时无法开转。")
-                        .foregroundStyle(Lucky.muted)
-                    Spacer()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("经典机台")
+                            .foregroundStyle(Lucky.gold)
+                        Text("任意一行三枚相同即中奖，可同时中多行。倍率按符号结算。BET 10 / 50 / MAX(100)，余额不足时无法开转。")
+                            .foregroundStyle(Lucky.cream)
+                        Text("7 ×20   BAR ×12   星 ×10   铃 ×8")
+                            .foregroundStyle(Lucky.gold)
+                        Text("西瓜 ×6   葡萄 ×5   橙 ×4   柠檬 ×3   樱桃 ×2")
+                            .foregroundStyle(Lucky.gold)
+                        Text("闯关挑战")
+                            .foregroundStyle(Lucky.gold)
+                            .padding(.top, 4)
+                        Text("不扣经典金币。每关限定转数和下注，累计赢得达到目标即过关，首次通关奖励进入经典金币。失败可重试，须按顺序解锁。")
+                            .foregroundStyle(Lucky.cream)
+                        Text("后几关会加上斜线、金星万能（可代替任意符号），或把当转赔付翻倍。三条金星按金星自己的倍率算。")
+                            .foregroundStyle(Lucky.muted)
+                    }
+                    .font(Lucky.bold(15))
+                    .padding(20)
                 }
-                .font(Lucky.bold(15))
-                .padding(20)
             }
             .navigationTitle("规则")
             .navigationBarTitleDisplayMode(.inline)

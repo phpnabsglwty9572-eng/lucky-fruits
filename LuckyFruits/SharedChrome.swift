@@ -8,6 +8,8 @@ struct RootView: View {
             switch store.route {
             case .loading: LoadingView()
             case .home: HomeView()
+            case .modes: ModeSelectView()
+            case .stages: StageMapView()
             case .game: GameView()
             }
         }

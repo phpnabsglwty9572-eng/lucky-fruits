@@ -23,7 +23,7 @@ struct GameView: View {
                     .position(x: 187.5, y: 34.5)
                     .allowsHitTesting(false)
 
-                artTap("btnHome", w: 50, h: 50, x: 12, y: 10, disabled: store.isSpinning) {
+                artTap("btnHome", w: 50, h: 50, x: 12, y: 10, disabled: store.isSpinning, pulse: pulse) {
                     store.audio.click()
                     withAnimation { store.leaveGame() }
                 }
@@ -31,7 +31,7 @@ struct GameView: View {
                 coinsHud
                     .position(x: 187.5, y: 35.5)
 
-                artTap("btnSettings", w: 50, h: 50, x: 313, y: 10, disabled: store.isSpinning) {
+                artTap("btnSettings", w: 50, h: 50, x: 313, y: 10, disabled: store.isSpinning, pulse: pulse) {
                     store.audio.click()
                     store.showSettings = true
                 }
@@ -67,23 +67,32 @@ struct GameView: View {
                 Button {
                     Task { await store.spin() }
                 } label: {
-                    Image("btnSpin")
-                        .resizable()
-                        .interpolation(.high)
-                        .scaledToFit()
-                        .frame(width: 111, height: 111)
-                        .shadow(
-                            color: Lucky.gold.opacity(store.isSpinning ? 0.2 : (pulse ? 0.55 : 0.2)),
-                            radius: pulse ? 12 : 4
+                    ZStack {
+                        CircleLights(
+                            diameter: 111,
+                            spinning: store.isSpinning,
+                            armed: store.canSpin
                         )
-                        .opacity(store.canSpin || store.isSpinning ? 1 : 0.55)
+                        Image("btnSpin")
+                            .resizable()
+                            .interpolation(.high)
+                            .scaledToFit()
+                            .frame(width: 111, height: 111)
+                            .rotationEffect(.degrees(store.isSpinning ? 0 : (store.canSpin ? (pulse ? -6 : 5) : 0)))
+                    }
+                    .shadow(
+                        color: Lucky.gold.opacity(store.isSpinning ? 0.85 : (store.canSpin ? (pulse ? 0.75 : 0.28) : 0.08)),
+                        radius: store.isSpinning ? 18 : (pulse ? 14 : 5)
+                    )
+                    .scaleEffect(store.isSpinning ? 0.96 : (store.canSpin && pulse ? 1.06 : 1))
+                    .opacity(store.canSpin || store.isSpinning ? 1 : 0.55)
                 }
                 .buttonStyle(PressScale())
                 .disabled(!store.canSpin)
                 .position(x: 254 + 55.5, y: 448 + 55.5)
 
                 if store.showWinBurst {
-                    WinBurstOverlay(amount: store.lastWin)
+                    WinBurstOverlay(amount: store.lastWin, title: store.burstTitle, subtitle: store.burstSubtitle)
                         .frame(width: 375, height: 667)
                         .onTapGesture { withAnimation { store.dismissWinBurst() } }
                 } else if let end = store.stageEnd {
@@ -107,11 +116,11 @@ struct GameView: View {
                 .scaledToFit()
                 .frame(width: 135, height: 55)
             VStack(spacing: 0) {
-                Text(store.mode == .stage ? "GOAL" : "COINS")
+                Text(store.mode == .stage ? "GOAL" : (store.inBonus ? "FREE" : "COINS"))
                     .font(Lucky.bold(8))
                     .tracking(1.6)
                     .foregroundStyle(Lucky.goldSoft.opacity(0.92))
-                Text(store.mode == .stage ? "\(store.stageWon)/\(store.stageTarget)" : "\(store.coins)")
+                Text(store.mode == .stage ? "\(store.stageWon)/\(store.stageTarget)" : (store.inBonus ? "\(store.freeSpinsLeft)" : "\(store.coins)"))
                     .font(Lucky.black(18))
                     .foregroundStyle(Lucky.gold)
                     .minimumScaleFactor(0.45)
@@ -121,7 +130,17 @@ struct GameView: View {
             .offset(y: 1)
         }
         .frame(width: 135, height: 55)
+        .scaleEffect(store.coinFlash ? 1.12 : 1)
+        .shadow(color: Lucky.gold.opacity(store.coinFlash ? 0.85 : 0), radius: store.coinFlash ? 10 : 0)
+        .animation(.spring(response: 0.32, dampingFraction: 0.55), value: store.coinFlash)
         .allowsHitTesting(false)
+        .onChange(of: store.coinFlash) { _, flashing in
+            guard flashing else { return }
+            Task {
+                try? await Task.sleep(nanoseconds: 700_000_000)
+                await MainActor.run { store.coinFlash = false }
+            }
+        }
     }
 
     private var reelBoard: some View {
@@ -153,38 +172,88 @@ struct GameView: View {
             ForEach(0..<3, id: \.self) { r in
                 ForEach(0..<3, id: \.self) { c in
                     let hit = store.hitCells.contains(r * 3 + c)
+                    let held = store.heldColumns.contains(c)
                     ZStack {
                         Image(store.grid[r][c].asset)
                             .resizable()
                             .scaledToFit()
                             .padding(4)
-                            .blur(radius: store.reelBlur)
-                            .offset(y: store.spinningColumn == c ? 8 : 0)
+                            .blur(radius: held ? 0 : store.reelBlur)
+                            .offset(y: held ? 0 : (store.spinningColumn == c ? 8 : 0))
                             .animation(.easeInOut(duration: 0.07), value: store.spinningColumn)
                     }
                     .frame(width: cellW, height: cellH[r])
                     .overlay(
                         RoundedRectangle(cornerRadius: 8)
-                            .stroke(hit && !store.isSpinning ? Lucky.gold : Color.clear, lineWidth: 2.5)
-                            .shadow(color: hit && !store.isSpinning ? Lucky.gold.opacity(0.9) : .clear, radius: pulse ? 10 : 4)
+                            .stroke(
+                                held ? Lucky.gold : (hit && !store.isSpinning ? Lucky.gold : Color.clear),
+                                lineWidth: held || hit ? 2.5 : 0
+                            )
+                            .shadow(color: (held || hit) && !store.isSpinning ? Lucky.gold.opacity(0.9) : .clear, radius: pulse ? 10 : 4)
                     )
                     .scaleEffect(hit && !store.isSpinning ? (pulse ? 1.04 : 1.0) : 1)
                     .offset(x: cols[c], y: rows[r])
+                    .allowsHitTesting(false)
+                }
+            }
+
+            ForEach(0..<3, id: \.self) { c in
+                let held = store.heldColumns.contains(c)
+                Button {
+                    store.toggleHold(c)
+                } label: {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(held ? Lucky.gold.opacity(0.12) : Color.white.opacity(0.001))
+                        .overlay(alignment: .bottom) {
+                            Text("HOLD")
+                                .font(Lucky.black(10))
+                                .tracking(1)
+                                .foregroundStyle(held ? Lucky.gold : Lucky.goldSoft.opacity(store.canHold ? 0.45 : 0))
+                                .padding(.bottom, 6)
+                        }
+                }
+                .buttonStyle(.plain)
+                .disabled(!store.canHold)
+                .frame(width: cellW, height: 252)
+                .offset(x: cols[c], y: rows[0])
+
+                if store.canHold, store.nudgesLeft > 0, !held {
+                    Button {
+                        store.nudge(c)
+                    } label: {
+                        Text("NUDGE")
+                            .font(Lucky.black(9))
+                            .tracking(0.6)
+                            .foregroundStyle(Lucky.gold)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 4)
+                            .background(Lucky.wine.opacity(0.94), in: Capsule())
+                            .overlay(Capsule().stroke(Lucky.gold, lineWidth: 1))
+                            .shadow(color: Lucky.gold.opacity(0.45), radius: 4)
+                    }
+                    .buttonStyle(PressScale())
+                    .offset(x: cols[c] + 16, y: rows[0] + 4)
                 }
             }
         }
         .frame(width: 335, height: 341)
         .clipped()
-        .allowsHitTesting(false)
     }
 
-    private func artTap(_ image: String, w: CGFloat, h: CGFloat, x: CGFloat, y: CGFloat, disabled: Bool = false, action: @escaping () -> Void) -> some View {
+    private func artTap(_ image: String, w: CGFloat, h: CGFloat, x: CGFloat, y: CGFloat, disabled: Bool = false, pulse: Bool = false, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Image(image)
-                .resizable()
-                .interpolation(.high)
-                .scaledToFit()
-                .frame(width: w, height: h)
+            ZStack {
+                Circle()
+                    .stroke(Lucky.gold.opacity(disabled ? 0 : (pulse ? 0.7 : 0.18)), lineWidth: 1.6)
+                    .frame(width: w + 8, height: h + 8)
+                    .scaleEffect(pulse && !disabled ? 1.1 : 1)
+                    .opacity(disabled ? 0 : 1)
+                Image(image)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+                    .frame(width: w, height: h)
+            }
         }
         .buttonStyle(PressScale())
         .disabled(disabled)
@@ -200,6 +269,9 @@ struct GameView: View {
                     .interpolation(.high)
                     .scaledToFit()
                     .frame(width: 72, height: 63)
+                if selected {
+                    EdgeLights(width: 76, height: 68, corner: 12, count: 12, speed: 0.7)
+                }
                 VStack(spacing: -1) {
                     Text(top)
                         .font(Lucky.black(11))
@@ -214,13 +286,15 @@ struct GameView: View {
             .frame(width: 74, height: 70)
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(selected ? Lucky.gold : Color.clear, lineWidth: 3)
+                    .stroke(selected ? Lucky.gold : Lucky.gold.opacity(0.18), lineWidth: selected ? 3 : 1)
             )
-            .shadow(color: selected ? Lucky.gold.opacity(0.7) : .clear, radius: selected ? 8 : 0)
-            .brightness(selected ? 0.06 : 0)
+            .shadow(color: selected ? Lucky.gold.opacity(pulse ? 0.95 : 0.4) : .clear, radius: selected ? (pulse ? 12 : 6) : 0)
+            .brightness(selected ? 0.08 : 0)
+            .scaleEffect(selected ? (pulse ? 1.08 : 1.03) : 1)
         }
         .buttonStyle(PressScale())
-        .disabled(store.isSpinning)
+        .disabled(store.isSpinning || store.inBonus)
+        .opacity(store.inBonus ? 0.45 : 1)
         .position(x: x + 37, y: y + 35)
     }
 }

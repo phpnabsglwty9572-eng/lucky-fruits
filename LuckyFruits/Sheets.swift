@@ -1,4 +1,5 @@
 import SwiftUI
+import WebKit
 
 struct SettingsSheet: View {
     @EnvironmentObject private var store: GameStore
@@ -9,10 +10,10 @@ struct SettingsSheet: View {
             ZStack {
                 Lucky.void.ignoresSafeArea()
                 VStack(spacing: 16) {
-                    toggle("背景音乐", isOn: $store.musicEnabled)
-                    toggle("游戏音效", isOn: $store.soundEnabled)
-                    toggle("震动反馈", isOn: $store.hapticEnabled)
-                    Button("游戏规则") {
+                    toggle("Music", isOn: $store.musicEnabled)
+                    toggle("Sound FX", isOn: $store.soundEnabled)
+                    toggle("Haptics", isOn: $store.hapticEnabled)
+                    Button("Rules") {
                         store.audio.click()
                         dismiss()
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
@@ -26,7 +27,7 @@ struct SettingsSheet: View {
                     .background(Lucky.maroon, in: RoundedRectangle(cornerRadius: 16))
                     .overlay(RoundedRectangle(cornerRadius: 16).stroke(Lucky.gold.opacity(0.45), lineWidth: 1))
 
-                    Button("重置金币与关卡") {
+                    Button("Reset coins & stages") {
                         store.resetProgress()
                         store.audio.click()
                     }
@@ -39,11 +40,11 @@ struct SettingsSheet: View {
                 }
                 .padding(20)
             }
-            .navigationTitle("设置")
+            .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("完成") { dismiss() }.foregroundStyle(Lucky.gold)
+                    Button("Done") { dismiss() }.foregroundStyle(Lucky.gold)
                 }
             }
             .onChange(of: store.musicEnabled) { _, _ in store.applyAudioFlags() }
@@ -67,26 +68,36 @@ struct PrivacySheet: View {
 
     var body: some View {
         NavigationStack {
-            ZStack {
-                Lucky.void.ignoresSafeArea()
-                ScrollView {
-                    Text("Lucky Fruits 为单机水果机。金币、下注仅保存在本机，不联网、不上报账号。背景音乐与音效为原创合成，风格贴合金红赌场灯牌。")
-                        .font(.system(size: 15))
-                        .foregroundStyle(Lucky.muted)
-                        .padding(20)
+            PrivacyWebView(url: Lucky.privacyURL)
+                .ignoresSafeArea(edges: .bottom)
+                .background(Lucky.void)
+                .navigationTitle("Privacy")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Done") { dismiss() }.foregroundStyle(Lucky.gold)
+                    }
                 }
-            }
-            .navigationTitle("隐私政策")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("完成") { dismiss() }.foregroundStyle(Lucky.gold)
-                }
-            }
         }
-        .presentationDetents([.medium])
         .preferredColorScheme(.dark)
     }
+}
+
+struct PrivacyWebView: UIViewRepresentable {
+    var url: URL
+
+    func makeUIView(context: Context) -> WKWebView {
+        let config = WKWebViewConfiguration()
+        config.defaultWebpagePreferences.allowsContentJavaScript = true
+        let web = WKWebView(frame: .zero, configuration: config)
+        web.backgroundColor = UIColor(Lucky.void)
+        web.isOpaque = false
+        web.scrollView.backgroundColor = UIColor(Lucky.void)
+        web.load(URLRequest(url: url))
+        return web
+    }
+
+    func updateUIView(_ uiView: WKWebView, context: Context) {}
 }
 
 struct RulesSheet: View {
@@ -98,31 +109,41 @@ struct RulesSheet: View {
                 Lucky.void.ignoresSafeArea()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("经典机台")
+                        Text("Classic")
                             .foregroundStyle(Lucky.gold)
-                        Text("任意一行三枚相同即中奖，可同时中多行。倍率按符号结算。BET 10 / 50 / MAX(100)，余额不足时无法开转。")
+                        Text("Match three identical symbols on any row. Multiple rows can pay in one spin. Payouts follow the symbol odds. BET 10 / 50 / MAX(100). You cannot spin if you cannot afford the bet.")
                             .foregroundStyle(Lucky.cream)
-                        Text("7 ×20   BAR ×12   星 ×10   铃 ×8")
+                        Text("Streak: consecutive wins stack payouts to ×2 / ×3 / ×5 and light the diagonals. A miss drops you back to rows only.")
+                            .foregroundStyle(Lucky.cream)
+                        Text("Jackpot: each paid spin feeds the pot. Three true Lucky 7s on a row or diagonal take the jackpot.")
+                            .foregroundStyle(Lucky.cream)
+                        Text("Free spins: 3 / 4 / 5 stars on the reels award 5 / 8 / 12 free spins. Stars are wild, diagonals are live, and coins are not charged.")
+                            .foregroundStyle(Lucky.cream)
+                        Text("Daily gift: open the app each day to collect coins. The gift grows through 7 days. Small wins do not stop the reels — only jackpots, free spins, and big hits pause for a celebration.")
+                            .foregroundStyle(Lucky.cream)
+                        Text("Hold & nudge: tap a reel to HOLD it (max 2). SPIN then respin the others. After a miss you get one NUDGE — shift that reel down one stop without paying again.")
+                            .foregroundStyle(Lucky.cream)
+                        Text("7 ×20   BAR ×12   Star ×10   Bell ×8")
                             .foregroundStyle(Lucky.gold)
-                        Text("西瓜 ×6   葡萄 ×5   橙 ×4   柠檬 ×3   樱桃 ×2")
+                        Text("Melon ×6   Grape ×5   Orange ×4   Lemon ×3   Cherry ×2")
                             .foregroundStyle(Lucky.gold)
-                        Text("闯关挑战")
+                        Text("Challenge")
                             .foregroundStyle(Lucky.gold)
                             .padding(.top, 4)
-                        Text("不扣经典金币。每关限定转数和下注，累计赢得达到目标即过关，首次通关奖励进入经典金币。失败可重试，须按顺序解锁。")
+                        Text("Classic coins are not charged. Each stage locks the bet and spin count. Hit the win goal to clear. First clear pays into classic coins. Fail and retry. Stages unlock in order.")
                             .foregroundStyle(Lucky.cream)
-                        Text("后几关会加上斜线、金星万能（可代替任意符号），或把当转赔付翻倍。三条金星按金星自己的倍率算。")
+                        Text("Later stages add diagonals, wild stars, or double payouts. Three stars pay as the star odds. 3+ stars on the reels add extra spins. Streak multipliers still apply.")
                             .foregroundStyle(Lucky.muted)
                     }
                     .font(Lucky.bold(15))
                     .padding(20)
                 }
             }
-            .navigationTitle("规则")
+            .navigationTitle("Rules")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("完成") { dismiss() }.foregroundStyle(Lucky.gold)
+                    Button("Done") { dismiss() }.foregroundStyle(Lucky.gold)
                 }
             }
         }

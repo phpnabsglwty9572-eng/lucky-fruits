@@ -17,16 +17,16 @@ struct ModeSelectView: View {
                     .shadow(color: Lucky.gold.opacity(glow ? 0.4 : 0.12), radius: glow ? 14 : 4)
                     .position(x: 187.5, y: 118)
 
-                Text("选择模式")
+                Text("SELECT MODE")
                     .font(Lucky.black(22))
                     .tracking(2)
                     .foregroundStyle(Lucky.gold)
                     .position(x: 187.5, y: 210)
 
                 modeCard(
-                    title: "经典机台",
-                    subtitle: "自由转动，金币一直累计",
-                    footnote: "横线三连 · 下注 10 / 50 / 100",
+                    title: "Classic",
+                    subtitle: "Streaks, jackpot, star free spins",
+                    footnote: "Match 3 across · bet 10 / 50 / 100",
                     y: 330
                 ) {
                     store.audio.click()
@@ -34,9 +34,9 @@ struct ModeSelectView: View {
                 }
 
                 modeCard(
-                    title: "闯关挑战",
-                    subtitle: "限定转数，达标进入下一关",
-                    footnote: "已通过 \(store.clearedStages)/\(StageDef.campaign.count)",
+                    title: "Challenge",
+                    subtitle: "Limited spins, hit the goal to advance",
+                    footnote: "Cleared \(store.clearedStages)/\(StageDef.campaign.count)",
                     y: 490
                 ) {
                     store.audio.click()
@@ -72,11 +72,13 @@ struct ModeSelectView: View {
             .padding(.horizontal, 18)
             .frame(width: 314, height: 118, alignment: .leading)
             .background(Lucky.maroon.opacity(0.92), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay(
+            .overlay {
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .stroke(Lucky.gold.opacity(glow ? 0.9 : 0.45), lineWidth: 2)
-            )
-            .shadow(color: Lucky.gold.opacity(glow ? 0.28 : 0.08), radius: glow ? 10 : 4)
+                    .stroke(Lucky.gold.opacity(glow ? 0.95 : 0.4), lineWidth: 2)
+                EdgeLights(width: 314, height: 118, corner: 18, count: 18, speed: 0.32)
+            }
+            .shadow(color: Lucky.gold.opacity(glow ? 0.4 : 0.1), radius: glow ? 12 : 4)
+            .scaleEffect(glow ? 1.015 : 1)
         }
         .buttonStyle(PressScale())
         .position(x: 187.5, y: y)
@@ -94,8 +96,8 @@ struct StageMapView: View {
                 VStack(spacing: 6) {
                     Color.clear.frame(height: 64)
                     Text(store.clearedStages >= StageDef.campaign.count
-                         ? "八关灯牌已全部点亮，可随时重玩"
-                         : "按顺序过关。不扣金币，首次通关才发奖励。")
+                         ? "All 8 stages lit. Replay any time."
+                         : "Clear in order. No coin cost. First clear pays.")
                         .font(Lucky.bold(12))
                         .foregroundStyle(Lucky.muted)
                         .multilineTextAlignment(.center)
@@ -110,7 +112,7 @@ struct StageMapView: View {
                 .padding(.horizontal, 18)
                 .frame(width: 375, height: 667)
 
-                Text("闯关")
+                Text("STAGES")
                     .font(Lucky.black(22))
                     .tracking(3)
                     .foregroundStyle(Lucky.gold)
@@ -135,7 +137,7 @@ struct StageMapView: View {
         let locked = stage.id > store.clearedStages
         let cleared = stage.id < store.clearedStages
         let current = stage.id == store.clearedStages
-        let badge = locked ? "未解锁" : (cleared ? "已过" : "挑战")
+        let badge = locked ? "Locked" : (cleared ? "Cleared" : "Play")
 
         return Button {
             store.audio.click()
@@ -184,26 +186,26 @@ struct StageEndOverlay: View {
         ZStack {
             Color.black.opacity(0.5)
             VStack(spacing: 8) {
-                Text(end.cleared ? (end.finale ? "灯牌点亮" : "过关") : "未达标")
+                Text(end.cleared ? (end.finale ? "LIGHTS ON" : "CLEARED") : "FAILED")
                     .font(Lucky.black(26))
                     .tracking(3)
                     .foregroundStyle(Lucky.goldSoft)
-                Text("第\(store.stageIndex + 1)关 · \(end.stageName)")
+                Text("Stage \(store.stageIndex + 1) · \(end.stageName)")
                     .font(Lucky.bold(14))
                     .foregroundStyle(Lucky.cream)
                 Text("\(end.got) / \(end.target)")
                     .font(Lucky.black(32))
                     .foregroundStyle(Lucky.gold)
                 if end.cleared, end.firstClear {
-                    Text("奖励 +\(end.reward) 金币")
+                    Text("Reward +\(end.reward) coins")
                         .font(Lucky.bold(15))
                         .foregroundStyle(Lucky.goldSoft)
                 } else if end.cleared {
-                    Text("再次通过，奖励已领过")
+                    Text("Cleared again. Reward already claimed.")
                         .font(Lucky.bold(14))
                         .foregroundStyle(Lucky.muted)
                 } else {
-                    Text("转数用尽，还差 \(end.target - end.got)")
+                    Text("Out of spins. Need \(end.target - end.got) more")
                         .font(Lucky.bold(14))
                         .foregroundStyle(Lucky.muted)
                 }
@@ -219,7 +221,7 @@ struct StageEndOverlay: View {
                             }
                         }
                     }
-                    overlayButton("返回关卡") {
+                    overlayButton("Stages") {
                         store.audio.click()
                         withAnimation { store.exitToStageMap() }
                     }
@@ -242,8 +244,8 @@ struct StageEndOverlay: View {
     }
 
     private var primaryTitle: String {
-        if end.cleared, end.hasNext { return "下一关" }
-        return end.cleared ? "再玩一次" : "再试一次"
+        if end.cleared, end.hasNext { return "Next" }
+        return end.cleared ? "Play again" : "Retry"
     }
 
     private func overlayButton(_ title: String, action: @escaping () -> Void) -> some View {

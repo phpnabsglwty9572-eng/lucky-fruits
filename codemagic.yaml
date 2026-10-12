@@ -28,16 +28,15 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m2
     integrations:
-      app_store_connect: lucky-fruits
+      app_store_connect: lucky-fruits-dist
     environment:
+      xcode: latest
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.luckyfruit.lotharm
       vars:
         XCODE_PROJECT: LuckyFruits.xcodeproj
         XCODE_SCHEME: LuckyFruits
-        BUNDLE_ID: com.luckyfruit.lotharm
-      xcode: latest
     scripts:
       - name: Set up code signing
         script: xcode-project use-profiles

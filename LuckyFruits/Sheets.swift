@@ -50,8 +50,7 @@ struct SettingsSheet: View {
             .onChange(of: store.musicEnabled) { _, _ in store.applyAudioFlags() }
             .onChange(of: store.soundEnabled) { _, _ in store.applyAudioFlags() }
         }
-        .presentationDetents([.medium])
-        .preferredColorScheme(.dark)
+        .luckySheetChrome()
     }
 
     private func toggle(_ title: String, isOn: Binding<Bool>) -> some View {
@@ -79,7 +78,7 @@ struct PrivacySheet: View {
                     }
                 }
         }
-        .preferredColorScheme(.dark)
+        .luckySheetChrome(phoneDetents: nil)
     }
 }
 
@@ -147,7 +146,6 @@ struct RulesSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium])
-        .preferredColorScheme(.dark)
+        .luckySheetChrome()
     }
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 enum Lucky {
     static let canvas = CGSize(width: 375, height: 667)
@@ -132,16 +133,90 @@ struct DesignCanvas<Content: View>: View {
 
     var body: some View {
         GeometryReader { geo in
-            let scale = min(geo.size.width / Lucky.canvas.width, geo.size.height / Lucky.canvas.height)
+            let inset = geo.safeAreaInsets
+            let play = CGSize(
+                width: max(1, geo.size.width - inset.leading - inset.trailing),
+                height: max(1, geo.size.height - inset.top - inset.bottom)
+            )
+            let scale = Lucky.canvasScale(for: play)
             ZStack {
-                Lucky.void
+                Image("imgLoadBg")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .clipped()
+                    .allowsHitTesting(false)
                 content()
                     .frame(width: Lucky.canvas.width, height: Lucky.canvas.height)
-                    .scaleEffect(scale, anchor: .center)
-                    .frame(width: Lucky.canvas.width * scale, height: Lucky.canvas.height * scale)
+                    .scaleEffect(x: scale.width, y: scale.height, anchor: .center)
+                    .frame(width: Lucky.canvas.width * scale.width, height: Lucky.canvas.height * scale.height)
+                    .position(
+                        x: inset.leading + play.width / 2,
+                        y: inset.top + play.height / 2
+                    )
             }
             .frame(width: geo.size.width, height: geo.size.height)
+            .animation(.easeInOut(duration: 0.28), value: geo.size)
         }
+        .background(Lucky.void)
         .ignoresSafeArea()
+    }
+}
+
+extension Lucky {
+    static func isLandscape(_ size: CGSize) -> Bool {
+        size.width > size.height + 12
+    }
+
+    static func canvasScale(for play: CGSize) -> CGSize {
+        let dw = canvas.width
+        let dh = canvas.height
+        if isLandscape(play) {
+            let s = min(play.width / dw, play.height / dh)
+            return CGSize(width: s, height: s)
+        }
+        let aspect = play.width / max(play.height, 1)
+        if aspect > dw / dh + 0.02 {
+            return CGSize(width: play.width / dw, height: play.height / dh)
+        }
+        let s = min(play.width / dw, play.height / dh)
+        return CGSize(width: s, height: s)
+    }
+}
+
+extension View {
+    func luckySheetChrome(phoneDetents: Set<PresentationDetent>? = [.medium]) -> some View {
+        modifier(LuckySheetChrome(phoneDetents: phoneDetents))
+    }
+}
+
+private struct LuckySheetChrome: ViewModifier {
+    var phoneDetents: Set<PresentationDetent>?
+
+    func body(content: Content) -> some View {
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            padSheet(content)
+        } else if let phoneDetents {
+            content
+                .presentationDetents(phoneDetents)
+                .preferredColorScheme(.dark)
+        } else {
+            content.preferredColorScheme(.dark)
+        }
+    }
+
+    @ViewBuilder
+    private func padSheet(_ content: Content) -> some View {
+        if #available(iOS 18.0, *) {
+            content
+                .presentationSizing(.form)
+                .presentationBackground(Lucky.void)
+                .frame(minWidth: 440, idealWidth: 480, minHeight: 460)
+                .preferredColorScheme(.dark)
+        } else {
+            content
+                .presentationDetents([.large])
+                .preferredColorScheme(.dark)
+        }
     }
 }

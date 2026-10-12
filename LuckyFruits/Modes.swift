@@ -5,83 +5,159 @@ struct ModeSelectView: View {
     @State private var glow = false
 
     var body: some View {
-        DesignCanvas {
+        GeometryReader { geo in
+            let size = geo.size
             ZStack {
-                screenBackground
-
-                Image("imgHomeLogo")
+                Image("imgLoadBg")
                     .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
-                    .frame(width: 250, height: 120)
-                    .shadow(color: Lucky.gold.opacity(glow ? 0.4 : 0.12), radius: glow ? 14 : 4)
-                    .position(x: 187.5, y: 118)
-
-                Text("SELECT MODE")
-                    .font(Lucky.black(22))
-                    .tracking(2)
-                    .foregroundStyle(Lucky.gold)
-                    .position(x: 187.5, y: 210)
-
-                modeCard(
-                    title: "Classic",
-                    subtitle: "Streaks, jackpot, star free spins",
-                    footnote: "Match 3 across · bet 10 / 50 / 100",
-                    y: 330
-                ) {
-                    store.audio.click()
-                    withAnimation { store.openClassic() }
-                }
-
-                modeCard(
-                    title: "Challenge",
-                    subtitle: "Limited spins, hit the goal to advance",
-                    footnote: "Cleared \(store.clearedStages)/\(StageDef.campaign.count)",
-                    y: 490
-                ) {
-                    store.audio.click()
-                    withAnimation { store.route = .stages }
-                }
-
-                homeButton {
-                    store.audio.click()
-                    withAnimation { store.route = .home }
+                    .scaledToFill()
+                    .frame(width: size.width, height: size.height)
+                    .clipped()
+                    .allowsHitTesting(false)
+                if Lucky.isLandscape(size) {
+                    landscapeModes(size: size)
+                } else {
+                    phoneModes
+                        .frame(width: Lucky.canvas.width, height: Lucky.canvas.height)
+                        .scaleEffect(
+                            x: Lucky.canvasScale(for: size).width,
+                            y: Lucky.canvasScale(for: size).height,
+                            anchor: .center
+                        )
+                        .frame(width: size.width, height: size.height)
                 }
             }
-            .frame(width: 375, height: 667)
+            .frame(width: size.width, height: size.height)
         }
+        .ignoresSafeArea()
         .onAppear {
             withAnimation(.easeInOut(duration: 1.15).repeatForever(autoreverses: true)) { glow = true }
             store.audio.startMusic()
         }
     }
 
-    private func modeCard(title: String, subtitle: String, footnote: String, y: CGFloat, action: @escaping () -> Void) -> some View {
+    private var phoneModes: some View {
+        ZStack {
+            Image("imgHomeLogo")
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .frame(width: 250, height: 120)
+                .shadow(color: Lucky.gold.opacity(glow ? 0.4 : 0.12), radius: glow ? 14 : 4)
+                .position(x: 187.5, y: 118)
+
+            Text("SELECT MODE")
+                .font(Lucky.black(22))
+                .tracking(2)
+                .foregroundStyle(Lucky.gold)
+                .position(x: 187.5, y: 210)
+
+            modeCard(
+                title: "Classic",
+                subtitle: "Streaks, jackpot, star free spins",
+                footnote: "Match 3 across · bet 10 / 50 / 100",
+                width: 314,
+                height: 118
+            ) {
+                store.audio.click()
+                withAnimation { store.openClassic() }
+            }
+            .position(x: 187.5, y: 330)
+
+            modeCard(
+                title: "Challenge",
+                subtitle: "Limited spins, hit the goal to advance",
+                footnote: "Cleared \(store.clearedStages)/\(StageDef.campaign.count)",
+                width: 314,
+                height: 118
+            ) {
+                store.audio.click()
+                withAnimation { store.route = .stages }
+            }
+            .position(x: 187.5, y: 490)
+
+            navHomeButton {
+                store.audio.click()
+                withAnimation { store.route = .home }
+            }
+            .position(x: 12 + 25, y: 10 + 25)
+        }
+        .frame(width: 375, height: 667)
+    }
+
+    private func landscapeModes(size: CGSize) -> some View {
+        VStack(spacing: 18) {
+            HStack {
+                navHomeButton {
+                    store.audio.click()
+                    withAnimation { store.route = .home }
+                }
+                Spacer()
+                Text("SELECT MODE")
+                    .font(Lucky.black(26))
+                    .tracking(3)
+                    .foregroundStyle(Lucky.gold)
+                Spacer()
+                Color.clear.frame(width: 50, height: 50)
+            }
+            .padding(.horizontal, 28)
+            .padding(.top, 12)
+
+            HStack(spacing: 22) {
+                modeCard(
+                    title: "Classic",
+                    subtitle: "Streaks, jackpot, star free spins",
+                    footnote: "Match 3 across · bet 10 / 50 / 100",
+                    width: min(420, size.width * 0.42),
+                    height: min(220, size.height * 0.52)
+                ) {
+                    store.audio.click()
+                    withAnimation { store.openClassic() }
+                }
+                modeCard(
+                    title: "Challenge",
+                    subtitle: "Limited spins, hit the goal to advance",
+                    footnote: "Cleared \(store.clearedStages)/\(StageDef.campaign.count)",
+                    width: min(420, size.width * 0.42),
+                    height: min(220, size.height * 0.52)
+                ) {
+                    store.audio.click()
+                    withAnimation { store.route = .stages }
+                }
+            }
+            .padding(.horizontal, 28)
+            Spacer(minLength: 0)
+        }
+        .frame(width: size.width, height: size.height)
+    }
+
+    private func modeCard(title: String, subtitle: String, footnote: String, width: CGFloat, height: CGFloat, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text(title)
-                    .font(Lucky.black(24))
+                    .font(Lucky.black(28))
                     .foregroundStyle(Lucky.gold)
                 Text(subtitle)
-                    .font(Lucky.bold(14))
+                    .font(Lucky.bold(15))
                     .foregroundStyle(Lucky.cream)
+                Spacer(minLength: 0)
                 Text(footnote)
-                    .font(Lucky.bold(12))
+                    .font(Lucky.bold(13))
                     .foregroundStyle(Lucky.muted)
             }
-            .padding(.horizontal, 18)
-            .frame(width: 314, height: 118, alignment: .leading)
-            .background(Lucky.maroon.opacity(0.92), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .padding(.horizontal, 22)
+            .padding(.vertical, 18)
+            .frame(width: width, height: height, alignment: .leading)
+            .background(Lucky.maroon.opacity(0.92), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
             .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
                     .stroke(Lucky.gold.opacity(glow ? 0.95 : 0.4), lineWidth: 2)
-                EdgeLights(width: 314, height: 118, corner: 18, count: 18, speed: 0.32)
+                EdgeLights(width: width, height: height, corner: 22, count: 18, speed: 0.32)
             }
             .shadow(color: Lucky.gold.opacity(glow ? 0.4 : 0.1), radius: glow ? 12 : 4)
             .scaleEffect(glow ? 1.015 : 1)
         }
         .buttonStyle(PressScale())
-        .position(x: 187.5, y: y)
     }
 }
 
@@ -89,48 +165,114 @@ struct StageMapView: View {
     @EnvironmentObject private var store: GameStore
 
     var body: some View {
-        DesignCanvas {
-            ZStack(alignment: .top) {
-                screenBackground
-
-                VStack(spacing: 6) {
-                    Color.clear.frame(height: 64)
-                    Text(store.clearedStages >= StageDef.campaign.count
-                         ? "All 8 stages lit. Replay any time."
-                         : "Clear in order. No coin cost. First clear pays.")
-                        .font(Lucky.bold(12))
-                        .foregroundStyle(Lucky.muted)
-                        .multilineTextAlignment(.center)
-                        .frame(width: 320)
-                        .padding(.bottom, 2)
-
-                    ForEach(StageDef.campaign) { stage in
-                        stageRow(stage)
-                    }
-                    Spacer(minLength: 0)
+        GeometryReader { geo in
+            let size = geo.size
+            ZStack {
+                Image("imgLoadBg")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size.width, height: size.height)
+                    .clipped()
+                    .allowsHitTesting(false)
+                if Lucky.isLandscape(size) {
+                    landscapeStages(size: size)
+                } else {
+                    phoneStages
+                        .frame(width: Lucky.canvas.width, height: Lucky.canvas.height)
+                        .scaleEffect(
+                            x: Lucky.canvasScale(for: size).width,
+                            y: Lucky.canvasScale(for: size).height,
+                            anchor: .center
+                        )
+                        .frame(width: size.width, height: size.height)
                 }
-                .padding(.horizontal, 18)
-                .frame(width: 375, height: 667)
+            }
+            .frame(width: size.width, height: size.height)
+        }
+        .ignoresSafeArea()
+        .onAppear { store.audio.startMusic() }
+    }
 
-                Text("STAGES")
-                    .font(Lucky.black(22))
-                    .tracking(3)
-                    .foregroundStyle(Lucky.gold)
-                    .position(x: 187.5, y: 36)
+    private var phoneStages: some View {
+        ZStack(alignment: .top) {
+            VStack(spacing: 6) {
+                Color.clear.frame(height: 64)
+                Text(store.clearedStages >= StageDef.campaign.count
+                     ? "All 8 stages lit. Replay any time."
+                     : "Clear in order. No coin cost. First clear pays.")
+                    .font(Lucky.bold(12))
+                    .foregroundStyle(Lucky.muted)
+                    .multilineTextAlignment(.center)
+                    .frame(width: 320)
+                    .padding(.bottom, 2)
 
-                Text("\(store.clearedStages)/\(StageDef.campaign.count)")
-                    .font(Lucky.black(16))
-                    .foregroundStyle(Lucky.goldSoft)
-                    .position(x: 328, y: 36)
+                ForEach(StageDef.campaign) { stage in
+                    stageRow(stage)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 18)
+            .frame(width: 375, height: 667)
 
-                homeButton {
+            Text("STAGES")
+                .font(Lucky.black(22))
+                .tracking(3)
+                .foregroundStyle(Lucky.gold)
+                .position(x: 187.5, y: 36)
+
+            Text("\(store.clearedStages)/\(StageDef.campaign.count)")
+                .font(Lucky.black(16))
+                .foregroundStyle(Lucky.goldSoft)
+                .position(x: 328, y: 36)
+
+            navHomeButton {
+                store.audio.click()
+                withAnimation { store.route = .modes }
+            }
+            .position(x: 12 + 25, y: 10 + 25)
+        }
+        .frame(width: 375, height: 667)
+    }
+
+    private func landscapeStages(size: CGSize) -> some View {
+        VStack(spacing: 10) {
+            HStack {
+                navHomeButton {
                     store.audio.click()
                     withAnimation { store.route = .modes }
                 }
+                Spacer()
+                Text("STAGES")
+                    .font(Lucky.black(24))
+                    .tracking(3)
+                    .foregroundStyle(Lucky.gold)
+                Spacer()
+                Text("\(store.clearedStages)/\(StageDef.campaign.count)")
+                    .font(Lucky.black(18))
+                    .foregroundStyle(Lucky.goldSoft)
+                    .frame(minWidth: 50, alignment: .trailing)
             }
-            .frame(width: 375, height: 667)
+            .padding(.horizontal, 28)
+            .padding(.top, 10)
+
+            Text(store.clearedStages >= StageDef.campaign.count
+                 ? "All 8 stages lit. Replay any time."
+                 : "Clear in order. No coin cost. First clear pays.")
+                .font(Lucky.bold(13))
+                .foregroundStyle(Lucky.muted)
+
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)],
+                spacing: 12
+            ) {
+                ForEach(StageDef.campaign) { stage in
+                    stageRow(stage)
+                }
+            }
+            .padding(.horizontal, 24)
+            Spacer(minLength: 0)
         }
-        .onAppear { store.audio.startMusic() }
+        .frame(width: size.width, height: size.height)
     }
 
     private func stageRow(_ stage: StageDef) -> some View {
@@ -265,16 +407,7 @@ struct StageEndOverlay: View {
     }
 }
 
-private var screenBackground: some View {
-    Image("imgLoadBg")
-        .resizable()
-        .scaledToFill()
-        .frame(width: 375, height: 667)
-        .clipped()
-        .allowsHitTesting(false)
-}
-
-private func homeButton(action: @escaping () -> Void) -> some View {
+private func navHomeButton(action: @escaping () -> Void) -> some View {
     Button(action: action) {
         Image("btnHome")
             .resizable()
@@ -283,5 +416,4 @@ private func homeButton(action: @escaping () -> Void) -> some View {
             .frame(width: 50, height: 50)
     }
     .buttonStyle(PressScale())
-    .position(x: 12 + 25, y: 10 + 25)
 }

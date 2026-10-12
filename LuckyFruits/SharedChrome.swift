@@ -13,6 +13,7 @@ struct RootView: View {
             case .game: GameView()
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .animation(.easeInOut(duration: 0.45), value: store.route)
         .sheet(isPresented: $store.showSettings) { SettingsSheet() }
         .sheet(isPresented: $store.showPrivacy) { PrivacySheet() }

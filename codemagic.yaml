@@ -28,7 +28,7 @@ workflows:
     max_build_duration: 120
     instance_type: mac_mini_m2
     integrations:
-      app_store_connect: lucky-fruits-dist
+      app_store_connect: update
     environment:
       xcode: latest
       ios_signing:

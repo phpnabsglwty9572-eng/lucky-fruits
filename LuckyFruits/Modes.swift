@@ -14,7 +14,7 @@ struct ModeSelectView: View {
                     .frame(width: size.width, height: size.height)
                     .clipped()
                     .allowsHitTesting(false)
-                if Lucky.isLandscape(size) {
+                if Lucky.isLandscape(size) || Lucky.isPad {
                     landscapeModes(size: size)
                 } else {
                     phoneModes
@@ -54,8 +54,8 @@ struct ModeSelectView: View {
 
             modeCard(
                 title: "Classic",
-                subtitle: "Streaks, jackpot, star free spins",
-                footnote: "Match 3 across · bet 10 / 50 / 100",
+                subtitle: "Orders, swap, blend wilds",
+                footnote: "Harvest jobs · bet 10 / 50 / 100",
                 width: 314,
                 height: 118
             ) {
@@ -66,7 +66,7 @@ struct ModeSelectView: View {
 
             modeCard(
                 title: "Challenge",
-                subtitle: "Limited spins, hit the goal to advance",
+                subtitle: "Limited spins · swap to hit the goal",
                 footnote: "Cleared \(store.clearedStages)/\(StageDef.campaign.count)",
                 width: 314,
                 height: 118
@@ -100,32 +100,34 @@ struct ModeSelectView: View {
                 Spacer()
                 Color.clear.frame(width: 50, height: 50)
             }
-            .padding(.horizontal, 28)
-            .padding(.top, 12)
+            .padding(.horizontal, Lucky.isPad ? 40 : 28)
+            .padding(.top, Lucky.isPad ? 20 : 12)
 
-            HStack(spacing: 22) {
+            if Lucky.isPad { Spacer(minLength: 12) }
+
+            HStack(spacing: Lucky.isPad ? 28 : 22) {
                 modeCard(
                     title: "Classic",
-                    subtitle: "Streaks, jackpot, star free spins",
-                    footnote: "Match 3 across · bet 10 / 50 / 100",
-                    width: min(420, size.width * 0.42),
-                    height: min(220, size.height * 0.52)
+                    subtitle: "Orders, swap, blend wilds",
+                    footnote: "Harvest jobs · bet 10 / 50 / 100",
+                    width: min(Lucky.isPad ? 460 : 420, size.width * 0.42),
+                    height: min(Lucky.isPad ? 260 : 220, size.height * 0.48)
                 ) {
                     store.audio.click()
                     withAnimation { store.openClassic() }
                 }
                 modeCard(
                     title: "Challenge",
-                    subtitle: "Limited spins, hit the goal to advance",
+                    subtitle: "Limited spins · swap to hit the goal",
                     footnote: "Cleared \(store.clearedStages)/\(StageDef.campaign.count)",
-                    width: min(420, size.width * 0.42),
-                    height: min(220, size.height * 0.52)
+                    width: min(Lucky.isPad ? 460 : 420, size.width * 0.42),
+                    height: min(Lucky.isPad ? 260 : 220, size.height * 0.48)
                 ) {
                     store.audio.click()
                     withAnimation { store.route = .stages }
                 }
             }
-            .padding(.horizontal, 28)
+            .padding(.horizontal, Lucky.isPad ? 40 : 28)
             Spacer(minLength: 0)
         }
         .frame(width: size.width, height: size.height)
@@ -174,7 +176,7 @@ struct StageMapView: View {
                     .frame(width: size.width, height: size.height)
                     .clipped()
                     .allowsHitTesting(false)
-                if Lucky.isLandscape(size) {
+                if Lucky.isLandscape(size) || Lucky.isPad {
                     landscapeStages(size: size)
                 } else {
                     phoneStages
@@ -252,8 +254,8 @@ struct StageMapView: View {
                     .foregroundStyle(Lucky.goldSoft)
                     .frame(minWidth: 50, alignment: .trailing)
             }
-            .padding(.horizontal, 28)
-            .padding(.top, 10)
+            .padding(.horizontal, Lucky.isPad ? 40 : 28)
+            .padding(.top, Lucky.isPad ? 18 : 10)
 
             Text(store.clearedStages >= StageDef.campaign.count
                  ? "All 8 stages lit. Replay any time."
@@ -269,7 +271,7 @@ struct StageMapView: View {
                     stageRow(stage)
                 }
             }
-            .padding(.horizontal, 24)
+            .padding(.horizontal, Lucky.isPad ? 36 : 24)
             Spacer(minLength: 0)
         }
         .frame(width: size.width, height: size.height)
@@ -372,7 +374,7 @@ struct StageEndOverlay: View {
             }
             .padding(.horizontal, 22)
             .padding(.vertical, 20)
-            .frame(width: 314)
+            .frame(width: Lucky.panelWidth)
             .background(Lucky.maroon.opacity(0.94), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)

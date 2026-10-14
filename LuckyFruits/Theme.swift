@@ -14,6 +14,9 @@ enum Lucky {
     static let bulbPink = Color(red: 1, green: 90 / 255, blue: 200 / 255)
     static let bulbBlue = Color(red: 90 / 255, green: 200 / 255, blue: 1)
 
+    static var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    static var panelWidth: CGFloat { isPad ? 440 : 314 }
+
     static func black(_ size: CGFloat) -> Font { .system(size: size, weight: .black) }
     static func extra(_ size: CGFloat) -> Font { .system(size: size, weight: .heavy) }
     static func bold(_ size: CGFloat) -> Font { .system(size: size, weight: .bold) }

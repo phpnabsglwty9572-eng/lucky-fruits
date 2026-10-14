@@ -14,7 +14,13 @@ struct GameView: View {
                     .frame(width: size.width, height: size.height)
                     .clipped()
                     .allowsHitTesting(false)
-                if Lucky.isLandscape(size) {
+                if Lucky.isPad {
+                    if Lucky.isLandscape(size) {
+                        padLandscape(size: size)
+                    } else {
+                        padPortrait(size: size)
+                    }
+                } else if Lucky.isLandscape(size) {
                     landscapeMachine(size: size)
                 } else {
                     phoneMachine
@@ -78,14 +84,115 @@ struct GameView: View {
             spinButton
                 .position(x: 254 + 55.5, y: 448 + 55.5)
 
+            harvestBar
+                .frame(width: 351)
+                .position(x: 187.5, y: 614)
+
             overlays
                 .frame(width: 375, height: 667)
         }
         .frame(width: 375, height: 667)
     }
 
+    private func padPortrait(size: CGSize) -> some View {
+        let chrome: CGFloat = 96 + 40 + 156 + 96
+        let reelScale = min((size.width - 72) / 335, max(280, size.height - chrome) / 341, 2.05)
+        return VStack(spacing: 0) {
+            padHUD(width: size.width)
+            if !store.banner.isEmpty {
+                bannerChip
+                    .padding(.top, 10)
+            }
+            Spacer(minLength: 12)
+            reelBoard
+                .scaleEffect(reelScale)
+                .frame(width: 335 * reelScale, height: 341 * reelScale)
+            Spacer(minLength: 10)
+            padBetRow
+                .padding(.bottom, 10)
+            harvestBar
+                .padding(.horizontal, 32)
+                .padding(.bottom, 24)
+        }
+        .overlay { overlays }
+        .frame(width: size.width, height: size.height)
+    }
+
+    private func padLandscape(size: CGSize) -> some View {
+        let reelScale = min(
+            (size.height - 220) / 341,
+            (size.width * 0.54) / 335,
+            1.85
+        )
+        return VStack(spacing: 0) {
+            padHUD(width: size.width)
+            if !store.banner.isEmpty {
+                bannerChip
+                    .padding(.top, 8)
+            }
+            HStack(alignment: .center, spacing: 36) {
+                reelBoard
+                    .scaleEffect(reelScale)
+                    .frame(width: 335 * reelScale, height: 341 * reelScale)
+                padBetRow
+            }
+            .padding(.horizontal, 36)
+            .frame(maxHeight: .infinity)
+            harvestBar
+                .padding(.horizontal, 36)
+                .padding(.bottom, 20)
+        }
+        .overlay { overlays }
+        .frame(width: size.width, height: size.height)
+    }
+
+    private func padHUD(width: CGFloat) -> some View {
+        ZStack {
+            Image("imgHudBar")
+                .resizable()
+                .scaledToFill()
+                .frame(width: width, height: 88)
+                .clipped()
+                .allowsHitTesting(false)
+            HStack {
+                hudIcon("btnHome", size: 58, disabled: store.isSpinning) {
+                    store.audio.click()
+                    withAnimation { store.leaveGame() }
+                }
+                Spacer()
+                coinsHud
+                    .scaleEffect(1.18)
+                    .frame(width: 160, height: 65)
+                Spacer()
+                hudIcon("btnSettings", size: 58, disabled: store.isSpinning) {
+                    store.audio.click()
+                    store.showSettings = true
+                }
+            }
+            .padding(.horizontal, 28)
+        }
+        .frame(height: 88)
+    }
+
+    private var padBetRow: some View {
+        HStack(spacing: 20) {
+            betChip(top: "BET", bottom: "10", selected: store.bet == 10) { store.setBet(10) }
+                .scaleEffect(1.22)
+                .frame(width: 90, height: 86)
+            betChip(top: "BET", bottom: "50", selected: store.bet == 50) { store.setBet(50) }
+                .scaleEffect(1.22)
+                .frame(width: 90, height: 86)
+            betChip(top: "MAX", bottom: "BET", selected: store.bet != 10 && store.bet != 50) { store.setBet(100) }
+                .scaleEffect(1.22)
+                .frame(width: 90, height: 86)
+            spinButton
+                .scaleEffect(1.28)
+                .frame(width: 148, height: 148)
+        }
+    }
+
     private func landscapeMachine(size: CGSize) -> some View {
-        let reelH = min(size.height - 96, size.width * 0.58)
+        let reelH = min(size.height - 168, size.width * 0.58)
         let reelScale = min(reelH / 341, (size.width * 0.58) / 335)
         return VStack(spacing: 0) {
             ZStack {
@@ -121,7 +228,7 @@ struct GameView: View {
                 reelBoard
                     .scaleEffect(reelScale)
                     .frame(width: 335 * reelScale, height: 341 * reelScale)
-                VStack(spacing: 22) {
+                VStack(spacing: 16) {
                     HStack(spacing: 12) {
                         betChip(top: "BET", bottom: "10", selected: store.bet == 10) { store.setBet(10) }
                         betChip(top: "BET", bottom: "50", selected: store.bet == 50) { store.setBet(50) }
@@ -132,6 +239,10 @@ struct GameView: View {
             }
             .padding(.horizontal, 28)
             .frame(maxHeight: .infinity)
+
+            harvestBar
+                .padding(.horizontal, 24)
+                .padding(.bottom, 14)
         }
         .overlay {
             overlays
@@ -144,22 +255,98 @@ struct GameView: View {
         if store.showWinBurst {
             WinBurstOverlay(amount: store.lastWin, title: store.burstTitle, subtitle: store.burstSubtitle)
                 .onTapGesture { withAnimation { store.dismissWinBurst() } }
+        } else if store.showBlendPick {
+            BlendPickOverlay()
         } else if let end = store.stageEnd {
             StageEndOverlay(end: end)
         }
     }
 
+    private var harvestBar: some View {
+        HStack(spacing: 8) {
+            if store.mode == .classic {
+                ForEach(store.orders) { order in
+                    orderChip(order)
+                }
+            } else {
+                Text("Hit the goal · SWAP two fruits after a miss")
+                    .font(Lucky.bold(Lucky.isPad ? 14 : 11))
+                    .foregroundStyle(Lucky.goldSoft)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, minHeight: Lucky.isPad ? 54 : 44, alignment: .leading)
+                    .padding(.horizontal, 10)
+            }
+            Button {
+                store.audio.click()
+                store.showAlbum = true
+            } label: {
+                VStack(spacing: Lucky.isPad ? 3 : 2) {
+                    Text("\(store.albumCount)/9")
+                        .font(Lucky.black(Lucky.isPad ? 16 : 13))
+                        .foregroundStyle(Lucky.gold)
+                    Text("ALBUM")
+                        .font(Lucky.bold(Lucky.isPad ? 10 : 8))
+                        .tracking(0.6)
+                        .foregroundStyle(Lucky.goldSoft)
+                }
+                .frame(width: Lucky.isPad ? 70 : 52, height: Lucky.isPad ? 54 : 44)
+                .background(Lucky.wine.opacity(0.95), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(Lucky.gold.opacity(0.55), lineWidth: 1)
+                )
+            }
+            .buttonStyle(PressScale())
+        }
+        .padding(.horizontal, Lucky.isPad ? 12 : 8)
+        .padding(.vertical, Lucky.isPad ? 10 : 7)
+        .frame(maxWidth: .infinity)
+        .background(Lucky.maroon.opacity(0.94), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .stroke(Lucky.gold.opacity(0.4), lineWidth: 1)
+        )
+    }
+
+    private func orderChip(_ order: HarvestOrder) -> some View {
+        HStack(spacing: 5) {
+            if let symbol = order.symbol {
+                Image(symbol.asset)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: Lucky.isPad ? 28 : 22, height: Lucky.isPad ? 28 : 22)
+            }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(order.title)
+                    .font(Lucky.black(Lucky.isPad ? 13 : 10))
+                    .foregroundStyle(Lucky.gold)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                Text(order.progress)
+                    .font(Lucky.bold(Lucky.isPad ? 11 : 9))
+                    .foregroundStyle(Lucky.goldSoft)
+            }
+        }
+        .padding(.horizontal, Lucky.isPad ? 10 : 7)
+        .frame(maxWidth: .infinity, minHeight: Lucky.isPad ? 54 : 44, maxHeight: Lucky.isPad ? 54 : 44, alignment: .leading)
+        .background(Lucky.wine.opacity(0.72), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(Lucky.gold.opacity(0.28), lineWidth: 1)
+        )
+    }
+
     private var bannerChip: some View {
         Text(store.banner)
-            .font(Lucky.bold(11))
+            .font(Lucky.bold(Lucky.isPad ? 14 : 11))
             .foregroundStyle(Lucky.goldSoft)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
+            .padding(.horizontal, Lucky.isPad ? 16 : 10)
+            .padding(.vertical, Lucky.isPad ? 7 : 4)
             .background(Lucky.maroon.opacity(0.88), in: Capsule())
             .overlay(Capsule().stroke(Lucky.gold.opacity(0.55), lineWidth: 1))
-            .frame(width: 280)
+            .frame(width: Lucky.isPad ? 420 : 280)
             .allowsHitTesting(false)
     }
 
@@ -191,13 +378,13 @@ struct GameView: View {
         .disabled(!store.canSpin)
     }
 
-    private func hudIcon(_ image: String, disabled: Bool, action: @escaping () -> Void) -> some View {
+    private func hudIcon(_ image: String, size: CGFloat = 50, disabled: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(image)
                 .resizable()
                 .interpolation(.high)
                 .scaledToFit()
-                .frame(width: 50, height: 50)
+                .frame(width: size, height: size)
         }
         .buttonStyle(PressScale())
         .disabled(disabled)
@@ -267,29 +454,39 @@ struct GameView: View {
 
             ForEach(0..<3, id: \.self) { r in
                 ForEach(0..<3, id: \.self) { c in
-                    let hit = store.hitCells.contains(r * 3 + c)
+                    let index = r * 3 + c
+                    let hit = store.hitCells.contains(index)
                     let held = store.heldColumns.contains(c)
-                    ZStack {
-                        Image(store.grid[r][c].asset)
-                            .resizable()
-                            .scaledToFit()
-                            .padding(4)
-                            .blur(radius: held ? 0 : store.reelBlur)
-                            .offset(y: held ? 0 : (store.spinningColumn == c ? 8 : 0))
-                            .animation(.easeInOut(duration: 0.07), value: store.spinningColumn)
+                    let picked = store.swapPicked == index
+                    Button {
+                        store.tapCell(index)
+                    } label: {
+                        ZStack {
+                            Image(store.grid[r][c].asset)
+                                .resizable()
+                                .scaledToFit()
+                                .padding(4)
+                                .blur(radius: held ? 0 : store.reelBlur)
+                                .offset(y: held ? 0 : (store.spinningColumn == c ? 8 : 0))
+                                .animation(.easeInOut(duration: 0.07), value: store.spinningColumn)
+                        }
+                        .frame(width: cellW, height: cellH[r])
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(
+                                    picked ? Lucky.goldSoft : (held ? Lucky.gold : (hit && !store.isSpinning ? Lucky.gold : Color.clear)),
+                                    lineWidth: picked || held || hit ? 2.5 : 0
+                                )
+                                .shadow(
+                                    color: (picked || held || hit) && !store.isSpinning ? Lucky.gold.opacity(0.9) : .clear,
+                                    radius: pulse ? 10 : 4
+                                )
+                        )
+                        .scaleEffect(picked ? 1.06 : (hit && !store.isSpinning ? (pulse ? 1.04 : 1.0) : 1))
                     }
-                    .frame(width: cellW, height: cellH[r])
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(
-                                held ? Lucky.gold : (hit && !store.isSpinning ? Lucky.gold : Color.clear),
-                                lineWidth: held || hit ? 2.5 : 0
-                            )
-                            .shadow(color: (held || hit) && !store.isSpinning ? Lucky.gold.opacity(0.9) : .clear, radius: pulse ? 10 : 4)
-                    )
-                    .scaleEffect(hit && !store.isSpinning ? (pulse ? 1.04 : 1.0) : 1)
+                    .buttonStyle(.plain)
+                    .disabled(!store.canSwap)
                     .offset(x: cols[c], y: rows[r])
-                    .allowsHitTesting(false)
                 }
             }
 
@@ -299,37 +496,19 @@ struct GameView: View {
                     store.toggleHold(c)
                 } label: {
                     RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(held ? Lucky.gold.opacity(0.12) : Color.white.opacity(0.001))
+                        .fill(held ? Lucky.gold.opacity(0.16) : Color.white.opacity(0.001))
                         .overlay(alignment: .bottom) {
-                            Text("HOLD")
+                            Text(held ? "HELD" : "HOLD")
                                 .font(Lucky.black(10))
                                 .tracking(1)
-                                .foregroundStyle(held ? Lucky.gold : Lucky.goldSoft.opacity(store.canHold ? 0.45 : 0))
-                                .padding(.bottom, 6)
+                                .foregroundStyle(held ? Lucky.gold : Lucky.goldSoft.opacity(store.canHold ? 0.55 : 0))
+                                .padding(.bottom, 5)
                         }
                 }
                 .buttonStyle(.plain)
                 .disabled(!store.canHold)
-                .frame(width: cellW, height: 252)
-                .offset(x: cols[c], y: rows[0])
-
-                if store.canHold, store.nudgesLeft > 0, !held {
-                    Button {
-                        store.nudge(c)
-                    } label: {
-                        Text("NUDGE")
-                            .font(Lucky.black(9))
-                            .tracking(0.6)
-                            .foregroundStyle(Lucky.gold)
-                            .padding(.horizontal, 7)
-                            .padding(.vertical, 4)
-                            .background(Lucky.wine.opacity(0.94), in: Capsule())
-                            .overlay(Capsule().stroke(Lucky.gold, lineWidth: 1))
-                            .shadow(color: Lucky.gold.opacity(0.45), radius: 4)
-                    }
-                    .buttonStyle(PressScale())
-                    .offset(x: cols[c] + 16, y: rows[0] + 4)
-                }
+                .frame(width: cellW, height: store.canSwap ? 20 : 252)
+                .offset(x: cols[c], y: store.canSwap ? 320 : rows[0])
             }
         }
         .frame(width: 335, height: 341)

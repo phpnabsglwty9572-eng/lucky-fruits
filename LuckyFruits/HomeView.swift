@@ -17,7 +17,9 @@ struct HomeView: View {
                     .frame(width: size.width, height: size.height)
                     .clipped()
                     .allowsHitTesting(false)
-                if Lucky.isLandscape(size) {
+                if Lucky.isPad, !Lucky.isLandscape(size) {
+                    padHome(size: size)
+                } else if Lucky.isLandscape(size) {
                     landscapeHome(size: size)
                 } else {
                     phoneHome
@@ -78,6 +80,47 @@ struct HomeView: View {
         .frame(width: 375, height: 667)
     }
 
+    private func padHome(size: CGSize) -> some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: 24)
+            Image("imgHomeLogo")
+                .resizable()
+                .interpolation(.high)
+                .scaledToFit()
+                .frame(width: min(520, size.width * 0.62), height: min(260, size.height * 0.28))
+                .shadow(color: Lucky.gold.opacity(glow ? 0.55 : 0.16), radius: glow ? 20 : 6)
+                .offset(y: glow ? -4 : 4)
+            Text("HARVEST · SWAP · BLEND")
+                .font(Lucky.black(16))
+                .tracking(3)
+                .foregroundStyle(Lucky.goldSoft.opacity(0.9))
+                .padding(.top, 8)
+            Spacer(minLength: 20)
+            VStack(spacing: 18) {
+                startButton
+                    .scaleEffect(showStart ? 1 : 0.82)
+                    .opacity(showStart ? 1 : 0)
+                settingsButton
+                    .scaleEffect(showSettings ? 1 : 0.86)
+                    .opacity(showSettings ? 1 : 0)
+                privacyButton
+                    .scaleEffect(showPrivacy ? 1 : 0.88)
+                    .opacity(showPrivacy ? 1 : 0)
+            }
+            .padding(.vertical, 22)
+            .padding(.horizontal, 20)
+            .frame(maxWidth: 440)
+            .background(Lucky.maroon.opacity(0.42), in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 28, style: .continuous)
+                    .stroke(Lucky.gold.opacity(0.35), lineWidth: 1.5)
+            }
+            Spacer(minLength: 28)
+        }
+        .padding(.horizontal, 40)
+        .frame(width: size.width, height: size.height)
+    }
+
     private func landscapeHome(size: CGSize) -> some View {
         HStack(alignment: .center, spacing: 28) {
             VStack(spacing: 12) {
@@ -85,10 +128,13 @@ struct HomeView: View {
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
-                    .frame(width: min(440, size.width * 0.44), height: min(236, size.height * 0.46))
+                    .frame(
+                        width: min(Lucky.isPad ? 520 : 440, size.width * 0.44),
+                        height: min(Lucky.isPad ? 280 : 236, size.height * 0.46)
+                    )
                     .shadow(color: Lucky.gold.opacity(glow ? 0.55 : 0.16), radius: glow ? 20 : 6)
                     .offset(y: glow ? -4 : 4)
-                Text("CLASSIC FRUIT SLOTS")
+                Text("HARVEST · SWAP · BLEND")
                     .font(Lucky.black(14))
                     .tracking(3)
                     .foregroundStyle(Lucky.goldSoft.opacity(0.9))
@@ -115,7 +161,7 @@ struct HomeView: View {
                 EdgeLights(width: min(360, size.width * 0.4), height: min(size.height - 80, 360), corner: 28, count: 18, speed: 0.28)
                     .opacity(0.7)
             }
-            .frame(width: min(360, size.width * 0.4))
+            .frame(width: min(Lucky.isPad ? 400 : 360, size.width * 0.4))
         }
         .padding(.horizontal, max(32, size.width * 0.05))
         .padding(.vertical, 28)

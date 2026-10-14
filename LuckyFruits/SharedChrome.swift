@@ -18,6 +18,7 @@ struct RootView: View {
         .sheet(isPresented: $store.showSettings) { SettingsSheet() }
         .sheet(isPresented: $store.showPrivacy) { PrivacySheet() }
         .sheet(isPresented: $store.showRules) { RulesSheet() }
+        .sheet(isPresented: $store.showAlbum) { AlbumSheet() }
     }
 }
 
@@ -178,7 +179,7 @@ struct DailyGiftOverlay: View {
             }
             .padding(.horizontal, 22)
             .padding(.vertical, 20)
-            .frame(width: 314)
+            .frame(width: Lucky.panelWidth)
             .background(Lucky.maroon.opacity(0.94), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)
@@ -189,5 +190,124 @@ struct DailyGiftOverlay: View {
         .onAppear {
             withAnimation(.spring(response: 0.42, dampingFraction: 0.7)) { burst = true }
         }
+    }
+}
+
+struct BlendPickOverlay: View {
+    @EnvironmentObject private var store: GameStore
+    @State private var burst = false
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 10), count: 3)
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.55)
+            VStack(spacing: 10) {
+                Text("BLEND READY")
+                    .font(Lucky.black(22))
+                    .tracking(3)
+                    .foregroundStyle(Lucky.goldSoft)
+                Text("Pick a fruit. It is wild for the next 3 spins.")
+                    .font(Lucky.bold(13))
+                    .foregroundStyle(Lucky.cream)
+                    .multilineTextAlignment(.center)
+                LazyVGrid(columns: columns, spacing: 10) {
+                    ForEach(SlotSymbol.allCases) { symbol in
+                        Button {
+                            withAnimation { store.pickBlend(symbol) }
+                        } label: {
+                            VStack(spacing: 4) {
+                                Image(symbol.asset)
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(width: 44, height: 44)
+                                Text(symbol.title)
+                                    .font(Lucky.bold(10))
+                                    .foregroundStyle(Lucky.gold)
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.7)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(Lucky.wine.opacity(0.95), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .stroke(Lucky.gold.opacity(0.55), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(PressScale())
+                    }
+                }
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 18)
+            .frame(width: Lucky.panelWidth)
+            .background(Lucky.maroon.opacity(0.96), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 18, style: .continuous)
+                    .stroke(Lucky.gold, lineWidth: 3)
+            )
+            .scaleEffect(burst ? 1 : 0.84)
+        }
+        .onAppear {
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.7)) { burst = true }
+        }
+    }
+}
+
+struct AlbumSheet: View {
+    @EnvironmentObject private var store: GameStore
+    @Environment(\.dismiss) private var dismiss
+
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 12), count: 3)
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Lucky.void.ignoresSafeArea()
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        Text("Harvest a 3-match of each fruit to stamp it. Fill the album for a one-time +400 bonus.")
+                            .font(Lucky.bold(14))
+                            .foregroundStyle(Lucky.cream)
+                        Text("\(store.albumCount) / 9 stamped")
+                            .font(Lucky.black(18))
+                            .foregroundStyle(Lucky.gold)
+                        LazyVGrid(columns: columns, spacing: 12) {
+                            ForEach(SlotSymbol.allCases) { symbol in
+                                let owned = store.album.contains(symbol.rawValue)
+                                VStack(spacing: 6) {
+                                    Image(symbol.asset)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(height: 52)
+                                        .grayscale(owned ? 0 : 1)
+                                        .opacity(owned ? 1 : 0.38)
+                                    Text(owned ? symbol.title : "???")
+                                        .font(Lucky.bold(12))
+                                        .foregroundStyle(owned ? Lucky.gold : Lucky.muted)
+                                }
+                                .padding(.vertical, 10)
+                                .frame(maxWidth: .infinity)
+                                .background(Lucky.maroon, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .stroke(owned ? Lucky.gold : Lucky.gold.opacity(0.2), lineWidth: owned ? 2 : 1)
+                                )
+                            }
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+            .navigationTitle("Fruit Album")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }.foregroundStyle(Lucky.gold)
+                }
+            }
+        }
+        .luckySheetChrome()
     }
 }

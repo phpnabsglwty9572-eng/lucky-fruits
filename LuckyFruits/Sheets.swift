@@ -13,6 +13,20 @@ struct SettingsSheet: View {
                     toggle("Music", isOn: $store.musicEnabled)
                     toggle("Sound FX", isOn: $store.soundEnabled)
                     toggle("Haptics", isOn: $store.hapticEnabled)
+                    Button("Fruit Album") {
+                        store.audio.click()
+                        dismiss()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                            store.showAlbum = true
+                        }
+                    }
+                    .font(Lucky.bold(16))
+                    .foregroundStyle(Lucky.gold)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(Lucky.maroon, in: RoundedRectangle(cornerRadius: 16))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Lucky.gold.opacity(0.45), lineWidth: 1))
+
                     Button("Rules") {
                         store.audio.click()
                         dismiss()
@@ -108,9 +122,19 @@ struct RulesSheet: View {
                 Lucky.void.ignoresSafeArea()
                 ScrollView {
                     VStack(alignment: .leading, spacing: 12) {
+                        Text("Lucky Fruits is a fruit-harvest puzzle. Coins are a score. There is no cash-out.")
+                            .foregroundStyle(Lucky.goldSoft)
                         Text("Classic")
                             .foregroundStyle(Lucky.gold)
-                        Text("Match three identical symbols on any row. Multiple rows can pay in one spin. Payouts follow the symbol odds. BET 10 / 50 / MAX(100). You cannot spin if you cannot afford the bet.")
+                        Text("Spin the marquee, then solve the 3×3 board. Match three identical fruits on a row. BET 10 / 50 / MAX(100). You cannot spin if you cannot afford the bet.")
+                            .foregroundStyle(Lucky.cream)
+                        Text("Kitchen orders: three live harvest jobs sit above the reels. Complete them by matching that fruit, paying two lines, landing three stars, or finishing a line with a SWAP. Orders pay extra score and then refresh.")
+                            .foregroundStyle(Lucky.cream)
+                        Text("SWAP: after a miss, tap two fruits to exchange them and rescore — no extra bet. HOLD a reel (max 2) and spin again to keep a near-miss.")
+                            .foregroundStyle(Lucky.cream)
+                        Text("Blend: paying lines fill the blend meter. When it is full, pick any fruit to make it wild for the next 3 spins.")
+                            .foregroundStyle(Lucky.cream)
+                        Text("Album: stamp each fruit the first time you 3-match it. Stamp all 9 for a one-time +400 bonus.")
                             .foregroundStyle(Lucky.cream)
                         Text("Streak: consecutive wins stack payouts to ×2 / ×3 / ×5 and light the diagonals. A miss drops you back to rows only.")
                             .foregroundStyle(Lucky.cream)
@@ -118,9 +142,7 @@ struct RulesSheet: View {
                             .foregroundStyle(Lucky.cream)
                         Text("Free spins: 3 / 4 / 5 stars on the reels award 5 / 8 / 12 free spins. Stars are wild, diagonals are live, and coins are not charged.")
                             .foregroundStyle(Lucky.cream)
-                        Text("Daily gift: open the app each day to collect coins. The gift grows through 7 days. Small wins do not stop the reels — only jackpots, free spins, and big hits pause for a celebration.")
-                            .foregroundStyle(Lucky.cream)
-                        Text("Hold & nudge: tap a reel to HOLD it (max 2). SPIN then respin the others. After a miss you get one NUDGE — shift that reel down one stop without paying again.")
+                        Text("Daily gift: open the app each day to collect coins. The gift grows through 7 days.")
                             .foregroundStyle(Lucky.cream)
                         Text("7 ×20   BAR ×12   Star ×10   Bell ×8")
                             .foregroundStyle(Lucky.gold)
@@ -129,9 +151,9 @@ struct RulesSheet: View {
                         Text("Challenge")
                             .foregroundStyle(Lucky.gold)
                             .padding(.top, 4)
-                        Text("Classic coins are not charged. Each stage locks the bet and spin count. Hit the win goal to clear. First clear pays into classic coins. Fail and retry. Stages unlock in order.")
+                        Text("Classic coins are not charged. Each stage locks the bet and spin count. Hit the win goal to clear. SWAP and blend still work, so clearing is a puzzle, not a wait. First clear pays into classic coins. Fail and retry. Stages unlock in order.")
                             .foregroundStyle(Lucky.cream)
-                        Text("Later stages add diagonals, wild stars, or double payouts. Three stars pay as the star odds. 3+ stars on the reels add extra spins. Streak multipliers still apply.")
+                        Text("Later stages add diagonals, wild stars, or double payouts. 3+ stars on the reels add extra spins. Streak multipliers still apply.")
                             .foregroundStyle(Lucky.muted)
                     }
                     .font(Lucky.bold(15))

@@ -9,7 +9,7 @@ enum PlayMode {
     case classic, stage
 }
 
-enum SlotSymbol: String, CaseIterable, Identifiable {
+enum SlotSymbol: String, CaseIterable, Identifiable, Codable {
     case cherry, lemon, orange, grape, melon, bell, star, bar, seven
 
     var id: String { rawValue }
@@ -114,6 +114,26 @@ struct SpinResult {
     var freeAwarded: Int = 0
     var extraStageSpins: Int = 0
     var nearMiss: String?
+    var matchedSymbols: [SlotSymbol] = []
+    var lineCount: Int = 0
+}
+
+struct HarvestOrder: Identifiable, Equatable, Codable {
+    enum Kind: String, Codable {
+        case lineSymbol, multiLine, stars, swapWin
+    }
+
+    var id: UUID
+    var kind: Kind
+    var symbol: SlotSymbol?
+    var need: Int
+    var have: Int
+    var reward: Int
+    var title: String
+    var detail: String
+
+    var done: Bool { have >= need }
+    var progress: String { "\(min(have, need))/\(need)" }
 }
 
 private struct SpinRules {
@@ -169,9 +189,19 @@ final class GameStore: ObservableObject {
     @Published var coinFlash = false
     @Published var daily: DailyGift?
     @Published var heldColumns: Set<Int> = []
-    @Published var nudgesLeft = 0
+    @Published var swapsLeft = 0
+    @Published var swapPicked: Int?
+    @Published var orders: [HarvestOrder] = []
+    @Published var album: Set<String> = []
+    @Published var blendCharge = 0
+    @Published var blendWild: SlotSymbol?
+    @Published var blendSpinsLeft = 0
+    @Published var showBlendPick = false
+    @Published var showAlbum = false
+    @Published var lastOrderClear: String?
 
     let bets = [10, 50, 100]
+    let blendMax = 8
     private let defaults = UserDefaults.standard
     let audio = SoundHub()
     private var savedClassicBet: Int
@@ -179,11 +209,24 @@ final class GameStore: ObservableObject {
     private let jackpotSeed = 200
     private var settleRules = SpinRules(diagonals: false, wildStar: false, payoutScale: 1)
     private var settleMult = 1
+    private var pendingBlendPick = false
+    private var albumBonusClaimed = false
     private static let dailyRewards = [80, 120, 180, 250, 350, 500, 800]
 
     var inBonus: Bool { mode == .classic && freeSpinsLeft > 0 }
 
-    var canHold: Bool { !isSpinning && stageEnd == nil && !showWinBurst }
+    var canHold: Bool { !isSpinning && stageEnd == nil && !showWinBurst && !showBlendPick }
+
+    var canSwap: Bool { canHold && swapsLeft > 0 }
+
+    var albumCount: Int { album.count }
+
+    var blendLabel: String {
+        if let wild = blendWild, blendSpinsLeft > 0 {
+            return "Wild \(wild.title) · \(blendSpinsLeft)"
+        }
+        return "Blend \(blendCharge)/\(blendMax)"
+    }
 
     var comboMultiplier: Int {
         switch winStreak {
@@ -206,10 +249,22 @@ final class GameStore: ObservableObject {
         jackpot = max(jackpotSeed, defaults.object(forKey: "lf.jackpot") as? Int ?? jackpotSeed)
         savedClassicBet = storedBet
         grid = GameStore.mockGrid()
+        album = Set(defaults.stringArray(forKey: "lf.album") ?? [])
+        albumBonusClaimed = defaults.bool(forKey: "lf.album.bonus")
+        blendCharge = min(blendMax, max(0, defaults.integer(forKey: "lf.blend.charge")))
+        if let raw = defaults.string(forKey: "lf.blend.wild"), let wild = SlotSymbol(rawValue: raw) {
+            blendWild = wild
+            blendSpinsLeft = max(0, defaults.integer(forKey: "lf.blend.spins"))
+        }
+        if let data = defaults.data(forKey: "lf.orders"),
+           let saved = try? JSONDecoder().decode([HarvestOrder].self, from: data) {
+            orders = saved.filter { !$0.done }
+        }
+        refillOrders()
     }
 
     var canSpin: Bool {
-        if isSpinning { return false }
+        if isSpinning || showBlendPick || showWinBurst { return false }
         if mode == .stage {
             return stageEnd == nil && stageSpinsLeft > 0
         }
@@ -234,6 +289,14 @@ final class GameStore: ObservableObject {
         defaults.set(hapticEnabled, forKey: "lf.haptic")
         defaults.set(clearedStages, forKey: "lf.cleared")
         defaults.set(jackpot, forKey: "lf.jackpot")
+        defaults.set(Array(album), forKey: "lf.album")
+        defaults.set(albumBonusClaimed, forKey: "lf.album.bonus")
+        defaults.set(blendCharge, forKey: "lf.blend.charge")
+        defaults.set(blendWild?.rawValue, forKey: "lf.blend.wild")
+        defaults.set(blendSpinsLeft, forKey: "lf.blend.spins")
+        if let data = try? JSONEncoder().encode(orders) {
+            defaults.set(data, forKey: "lf.orders")
+        }
     }
 
     func bootstrap() async {
@@ -257,7 +320,9 @@ final class GameStore: ObservableObject {
         freeSpinsLeft = 0
         winStreak = 0
         heldColumns = []
-        nudgesLeft = 0
+        clearSwap()
+        lastOrderClear = nil
+        refillOrders()
         bet = savedClassicBet
         refreshClassicBanner()
         route = .game
@@ -281,7 +346,8 @@ final class GameStore: ObservableObject {
         freeSpinsLeft = 0
         winStreak = 0
         heldColumns = []
-        nudgesLeft = 0
+        clearSwap()
+        lastOrderClear = nil
         bet = stage.bet
         grid = GameStore.mockGrid()
         refreshStageBanner()
@@ -295,7 +361,9 @@ final class GameStore: ObservableObject {
         freeSpinsLeft = 0
         winStreak = 0
         heldColumns = []
-        nudgesLeft = 0
+        clearSwap()
+        showBlendPick = false
+        pendingBlendPick = false
         route = mode == .stage ? .stages : .home
     }
 
@@ -304,14 +372,19 @@ final class GameStore: ObservableObject {
         stageEnd = nil
         showWinBurst = false
         heldColumns = []
-        nudgesLeft = 0
+        clearSwap()
+        showBlendPick = false
+        pendingBlendPick = false
         route = .stages
     }
 
     func dismissWinBurst() {
         showWinBurst = false
         coinFlash = false
-        if mode == .stage, stageEnd == nil {
+        if pendingBlendPick {
+            pendingBlendPick = false
+            showBlendPick = true
+        } else if mode == .stage, stageEnd == nil {
             refreshStageBanner()
         } else if mode == .classic {
             refreshClassicBanner()
@@ -359,7 +432,15 @@ final class GameStore: ObservableObject {
         winStreak = 0
         freeSpinsLeft = 0
         heldColumns = []
-        nudgesLeft = 0
+        clearSwap()
+        orders = []
+        blendCharge = 0
+        blendWild = nil
+        blendSpinsLeft = 0
+        showBlendPick = false
+        pendingBlendPick = false
+        lastOrderClear = nil
+        refillOrders()
         mode = .classic
         persist()
         refreshClassicBanner()
@@ -411,22 +492,58 @@ final class GameStore: ObservableObject {
         refreshHoldHint()
     }
 
-    func nudge(_ col: Int) {
-        guard canHold, nudgesLeft > 0, (0..<3).contains(col) else { return }
-        if heldColumns.contains(col) {
-            banner = "Nudge a free reel"
+    func tapCell(_ index: Int) {
+        guard canSwap, (0..<9).contains(index) else { return }
+        if swapPicked == index {
+            swapPicked = nil
             audio.click()
             return
         }
+        guard let first = swapPicked else {
+            swapPicked = index
+            banner = "Swap with another fruit"
+            audio.click()
+            haptic(.light)
+            return
+        }
+        let ra = first / 3
+        let ca = first % 3
+        let rb = index / 3
+        let cb = index % 3
         var next = grid
-        next[2][col] = next[1][col]
-        next[1][col] = next[0][col]
-        next[0][col] = SlotSymbol.randomSpin()
+        let saved = next[ra][ca]
+        next[ra][ca] = next[rb][cb]
+        next[rb][cb] = saved
         grid = next
-        nudgesLeft = 0
+        swapsLeft = 0
+        swapPicked = nil
         audio.tick()
         haptic(.rigid)
-        settleLandedGrid(playingStage: mode == .stage, stageAtStart: stageIndex, consumeHolds: false, grantNudge: false)
+        settleLandedGrid(
+            playingStage: mode == .stage,
+            stageAtStart: stageIndex,
+            consumeHolds: false,
+            grantSwap: false,
+            usedSwap: true
+        )
+    }
+
+    func pickBlend(_ symbol: SlotSymbol) {
+        guard showBlendPick else { return }
+        blendWild = symbol
+        blendSpinsLeft = 3
+        blendCharge = 0
+        showBlendPick = false
+        pendingBlendPick = false
+        persist()
+        audio.win()
+        haptic(.heavy)
+        banner = "Blend wild \(symbol.title) · next 3 spins"
+    }
+
+    private func clearSwap() {
+        swapsLeft = 0
+        swapPicked = nil
     }
 
     func spin() async {
@@ -473,6 +590,9 @@ final class GameStore: ObservableObject {
         hitCells = []
         showWinBurst = false
         lastWin = 0
+        swapPicked = nil
+        swapsLeft = 0
+        lastOrderClear = nil
 
         if playingStage {
             stageSpinsLeft -= 1
@@ -507,11 +627,11 @@ final class GameStore: ObservableObject {
         chargedClassic = false
         refundStageSpin = false
         refundFreeSpin = false
-        settleLandedGrid(playingStage: playingStage, stageAtStart: stageAtStart, consumeHolds: true, grantNudge: true)
+        settleLandedGrid(playingStage: playingStage, stageAtStart: stageAtStart, consumeHolds: true, grantSwap: true, usedSwap: false)
         isSpinning = false
     }
 
-    private func settleLandedGrid(playingStage: Bool, stageAtStart: Int, consumeHolds: Bool, grantNudge: Bool) {
+    private func settleLandedGrid(playingStage: Bool, stageAtStart: Int, consumeHolds: Bool, grantSwap: Bool, usedSwap: Bool) {
         var result = payout(for: grid, multiplier: settleMult, rules: settleRules)
         if result.jackpotHit, mode == .classic {
             result.amount += jackpot
@@ -531,22 +651,26 @@ final class GameStore: ObservableObject {
 
         if result.amount > 0 {
             winStreak += 1
-        } else if !grantNudge {
-            // nudge miss keeps the miss streak already applied
-        } else {
+        } else if grantSwap {
             winStreak = 0
+        }
+
+        let albumComplete = stampAlbum(result.matchedSymbols)
+        chargeBlend(result.lineCount)
+        if !playingStage {
+            creditOrders(result, usedSwap: usedSwap)
         }
 
         if playingStage {
             guard mode == .stage, stageIndex == stageAtStart else { return }
             stageWon += result.amount
-            if result.amount > 0 || result.extraStageSpins > 0 {
-                celebrate(result, multiplier: settleMult)
+            if result.amount > 0 || result.extraStageSpins > 0 || albumComplete {
+                celebrate(result, multiplier: settleMult, albumComplete: albumComplete)
             }
             resolveStageEnd()
             if stageEnd == nil, result.amount == 0, result.extraStageSpins == 0 {
                 if let miss = result.nearMiss {
-                    banner = "\(miss) · HOLD or NUDGE"
+                    banner = grantSwap ? "\(miss) · SWAP two fruits" : miss
                 } else {
                     refreshStageBanner()
                 }
@@ -558,11 +682,11 @@ final class GameStore: ObservableObject {
             guard mode == .classic else { return }
             if result.amount > 0 {
                 coins += result.amount
-                celebrate(result, multiplier: settleMult)
-            } else if result.freeAwarded > 0 {
-                celebrate(result, multiplier: settleMult)
+                celebrate(result, multiplier: settleMult, albumComplete: albumComplete)
+            } else if result.freeAwarded > 0 || albumComplete {
+                celebrate(result, multiplier: settleMult, albumComplete: albumComplete)
             } else if let miss = result.nearMiss {
-                banner = "\(miss) · HOLD or NUDGE"
+                banner = grantSwap ? "\(miss) · SWAP two fruits" : miss
                 haptic(.light)
             } else {
                 refreshClassicBanner()
@@ -572,12 +696,21 @@ final class GameStore: ObservableObject {
         }
 
         if consumeHolds { heldColumns = [] }
-        if grantNudge {
-            nudgesLeft = (result.amount == 0 && result.freeAwarded == 0 && result.extraStageSpins == 0 && stageEnd == nil) ? 1 : 0
+        if grantSwap {
+            swapsLeft = (result.amount == 0 && result.freeAwarded == 0 && result.extraStageSpins == 0 && stageEnd == nil) ? 1 : 0
         } else if result.amount > 0 {
-            nudgesLeft = 0
+            swapsLeft = 0
         }
         if result.amount > 0 { heldColumns = [] }
+        if grantSwap, blendWild != nil {
+            blendSpinsLeft -= 1
+            if blendSpinsLeft <= 0 {
+                blendWild = nil
+                blendSpinsLeft = 0
+            }
+        }
+        presentBlendPickIfReady()
+        persist()
     }
 
     func applyAudioFlags() {
@@ -630,8 +763,8 @@ final class GameStore: ObservableObject {
     private func refreshHoldHint() {
         if !heldColumns.isEmpty {
             banner = "Holding \(heldColumns.count) · SPIN respin the rest"
-        } else if nudgesLeft > 0 {
-            banner = "NUDGE a reel or HOLD then spin"
+        } else if swapsLeft > 0 {
+            banner = "SWAP two fruits or HOLD a reel"
         } else if mode == .stage {
             refreshStageBanner()
         } else {
@@ -642,30 +775,38 @@ final class GameStore: ObservableObject {
     private func refreshStageBanner() {
         guard let stage = currentStage else { return }
         var text = "Stage \(stageIndex + 1) \(stage.name) · \(stageSpinsLeft) left"
-        if winStreak >= 1 {
+        if let wild = blendWild, blendSpinsLeft > 0 {
+            text += " · wild \(wild.title)"
+        } else if winStreak >= 1 {
             text += " · Streak ×\(comboMultiplier)"
-        } else if nudgesLeft > 0 {
-            text += " · HOLD / NUDGE"
+        } else if swapsLeft > 0 {
+            text += " · SWAP / HOLD"
         }
         banner = text
     }
 
     private func refreshClassicBanner() {
+        if let note = lastOrderClear {
+            banner = note
+            return
+        }
         if freeSpinsLeft > 0 {
             banner = "Free spins \(freeSpinsLeft) · wild stars · diagonals"
+            return
+        }
+        if let wild = blendWild, blendSpinsLeft > 0 {
+            banner = "Blend wild \(wild.title) · \(blendSpinsLeft) left"
             return
         }
         if !heldColumns.isEmpty {
             banner = "Holding \(heldColumns.count) · SPIN respin the rest"
             return
         }
-        var text = "Jackpot \(jackpot)"
+        var text = "Jackpot \(jackpot) · \(blendLabel)"
         if winStreak >= 1 {
-            text += " · Streak ×\(comboMultiplier) · hot diagonals"
-        } else if nudgesLeft > 0 {
-            text += " · HOLD or NUDGE"
-        } else {
-            text += " · match 3 in a row"
+            text += " · Streak ×\(comboMultiplier)"
+        } else if swapsLeft > 0 {
+            text += " · SWAP two fruits"
         }
         banner = text
     }
@@ -674,11 +815,11 @@ final class GameStore: ObservableObject {
         result.jackpotHit || result.freeAwarded > 0 || result.extraStageSpins > 0 || result.amount >= bet * 10
     }
 
-    private func celebrate(_ result: SpinResult, multiplier: Int) {
-        presentBurst(result, multiplier: multiplier)
+    private func celebrate(_ result: SpinResult, multiplier: Int, albumComplete: Bool = false) {
+        presentBurst(result, multiplier: multiplier, albumComplete: albumComplete)
         audio.win()
         haptic(.heavy)
-        if isFeaturedWin(result) {
+        if albumComplete || isFeaturedWin(result) {
             showWinBurst = true
             coinFlash = false
         } else {
@@ -687,7 +828,13 @@ final class GameStore: ObservableObject {
         }
     }
 
-    private func presentBurst(_ result: SpinResult, multiplier: Int) {
+    private func presentBurst(_ result: SpinResult, multiplier: Int, albumComplete: Bool) {
+        if albumComplete {
+            burstTitle = "ALBUM"
+            burstSubtitle = "Every fruit harvested · +400"
+            banner = "Album complete · +400"
+            return
+        }
         if result.jackpotHit {
             burstTitle = "JACKPOT"
             burstSubtitle = result.freeAwarded > 0 ? "Free spins +\(result.freeAwarded)" : "Lucky 7s take the pot"
@@ -729,11 +876,16 @@ final class GameStore: ObservableObject {
     private func payout(for grid: [[SlotSymbol]], multiplier: Int, rules: SpinRules) -> SpinResult {
         var result = SpinResult()
         var near: String?
+        var wilds = Set<SlotSymbol>()
+        if rules.wildStar { wilds.insert(.star) }
+        if let extra = blendWild { wilds.insert(extra) }
 
         for line in rules.lines {
             let symbols = line.map { grid[$0.0][$0.1] }
-            if let symbol = matchedSymbol(symbols, wildStar: rules.wildStar) {
+            if let symbol = matchedSymbol(symbols, wilds: wilds) {
                 result.amount += bet * symbol.lineMultiplier * rules.payoutScale * multiplier
+                result.lineCount += 1
+                result.matchedSymbols.append(symbol)
                 if mode == .classic, symbols.allSatisfy({ $0 == .seven }) {
                     result.jackpotHit = true
                 }
@@ -774,16 +926,143 @@ final class GameStore: ObservableObject {
         return nil
     }
 
-    private func matchedSymbol(_ symbols: [SlotSymbol], wildStar: Bool) -> SlotSymbol? {
-        if wildStar {
-            let concrete = symbols.filter { $0 != .star }
-            if concrete.isEmpty { return .star }
+    private func matchedSymbol(_ symbols: [SlotSymbol], wilds: Set<SlotSymbol>) -> SlotSymbol? {
+        if !wilds.isEmpty {
+            let concrete = symbols.filter { !wilds.contains($0) }
+            if concrete.isEmpty { return symbols.first { !wilds.contains($0) } ?? symbols[0] }
             let first = concrete[0]
             guard concrete.allSatisfy({ $0 == first }) else { return nil }
             return first
         }
         guard symbols.count == 3, symbols[0] == symbols[1], symbols[1] == symbols[2] else { return nil }
         return symbols[0]
+    }
+
+    @discardableResult
+    private func stampAlbum(_ symbols: [SlotSymbol]) -> Bool {
+        var unlocked = false
+        for symbol in symbols where album.insert(symbol.rawValue).inserted {
+            unlocked = true
+        }
+        guard unlocked else { return false }
+        var completed = false
+        if album.count == SlotSymbol.allCases.count, !albumBonusClaimed {
+            albumBonusClaimed = true
+            coins += 400
+            lastWin = max(lastWin, 400)
+            completed = true
+        }
+        persist()
+        return completed
+    }
+
+    private func chargeBlend(_ lines: Int) {
+        guard lines > 0, blendSpinsLeft == 0, blendWild == nil else { return }
+        blendCharge = min(blendMax, blendCharge + lines)
+    }
+
+    private func presentBlendPickIfReady() {
+        guard blendCharge >= blendMax, blendSpinsLeft == 0, blendWild == nil, stageEnd == nil else { return }
+        if showWinBurst {
+            pendingBlendPick = true
+        } else {
+            showBlendPick = true
+        }
+    }
+
+    private func creditOrders(_ result: SpinResult, usedSwap: Bool) {
+        guard mode == .classic else { return }
+        var payout = 0
+        var names: [String] = []
+        for index in orders.indices {
+            guard !orders[index].done else { continue }
+            var add = 0
+            switch orders[index].kind {
+            case .lineSymbol:
+                if let symbol = orders[index].symbol {
+                    add = result.matchedSymbols.filter { $0 == symbol }.count
+                }
+            case .multiLine:
+                if result.lineCount >= 2 { add = 1 }
+            case .stars:
+                if result.scatterStars >= 3 { add = 1 }
+            case .swapWin:
+                if usedSwap, result.amount > 0 { add = 1 }
+            }
+            guard add > 0 else { continue }
+            orders[index].have = min(orders[index].need, orders[index].have + add)
+            if orders[index].done {
+                payout += orders[index].reward
+                names.append(orders[index].title)
+            }
+        }
+        if payout > 0 {
+            coins += payout
+            lastOrderClear = names.count == 1
+                ? "Order \(names[0]) · +\(payout)"
+                : "Orders cleared · +\(payout)"
+            coinFlash = true
+        }
+        orders.removeAll { $0.done }
+        refillOrders()
+        persist()
+    }
+
+    private func refillOrders() {
+        var guardCount = 0
+        while orders.count < 3, guardCount < 12 {
+            guardCount += 1
+            if let next = spawnOrder() {
+                orders.append(next)
+            } else {
+                break
+            }
+        }
+    }
+
+    private func spawnOrder() -> HarvestOrder? {
+        var pool: [HarvestOrder] = []
+        for symbol in SlotSymbol.allCases {
+            if orders.contains(where: { $0.kind == .lineSymbol && $0.symbol == symbol }) { continue }
+            let need = (symbol == .cherry || symbol == .lemon || symbol == .orange) ? 2 : 1
+            pool.append(
+                HarvestOrder(
+                    id: UUID(),
+                    kind: .lineSymbol,
+                    symbol: symbol,
+                    need: need,
+                    have: 0,
+                    reward: 40 + symbol.lineMultiplier * 12,
+                    title: symbol.title,
+                    detail: need > 1 ? "Match \(need) \(symbol.title) lines" : "Match a \(symbol.title) line"
+                )
+            )
+        }
+        if !orders.contains(where: { $0.kind == .multiLine }) {
+            pool.append(
+                HarvestOrder(
+                    id: UUID(), kind: .multiLine, symbol: nil, need: 1, have: 0, reward: 110,
+                    title: "Twin lines", detail: "Pay 2 lines in one spin"
+                )
+            )
+        }
+        if !orders.contains(where: { $0.kind == .stars }) {
+            pool.append(
+                HarvestOrder(
+                    id: UUID(), kind: .stars, symbol: .star, need: 1, have: 0, reward: 90,
+                    title: "Star party", detail: "Land 3 stars anywhere"
+                )
+            )
+        }
+        if !orders.contains(where: { $0.kind == .swapWin }) {
+            pool.append(
+                HarvestOrder(
+                    id: UUID(), kind: .swapWin, symbol: nil, need: 1, have: 0, reward: 120,
+                    title: "Puzzle pay", detail: "Complete a line with a SWAP"
+                )
+            )
+        }
+        return pool.randomElement()
     }
 
     private func stopReelMotion() {

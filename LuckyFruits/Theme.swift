@@ -188,13 +188,19 @@ extension Lucky {
 }
 
 extension View {
-    func luckySheetChrome(phoneDetents: Set<PresentationDetent>? = [.medium]) -> some View {
-        modifier(LuckySheetChrome(phoneDetents: phoneDetents))
+    func luckySheetChrome(
+        phoneDetents: Set<PresentationDetent>? = [.medium],
+        colorScheme: ColorScheme = .dark,
+        background: Color = Lucky.void
+    ) -> some View {
+        modifier(LuckySheetChrome(phoneDetents: phoneDetents, colorScheme: colorScheme, background: background))
     }
 }
 
 private struct LuckySheetChrome: ViewModifier {
     var phoneDetents: Set<PresentationDetent>?
+    var colorScheme: ColorScheme
+    var background: Color
 
     func body(content: Content) -> some View {
         if UIDevice.current.userInterfaceIdiom == .pad {
@@ -202,9 +208,12 @@ private struct LuckySheetChrome: ViewModifier {
         } else if let phoneDetents {
             content
                 .presentationDetents(phoneDetents)
-                .preferredColorScheme(.dark)
+                .presentationBackground(background)
+                .preferredColorScheme(colorScheme)
         } else {
-            content.preferredColorScheme(.dark)
+            content
+                .presentationBackground(background)
+                .preferredColorScheme(colorScheme)
         }
     }
 
@@ -213,13 +222,14 @@ private struct LuckySheetChrome: ViewModifier {
         if #available(iOS 18.0, *) {
             content
                 .presentationSizing(.form)
-                .presentationBackground(Lucky.void)
+                .presentationBackground(background)
                 .frame(minWidth: 440, idealWidth: 480, minHeight: 460)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(colorScheme)
         } else {
             content
                 .presentationDetents([.large])
-                .preferredColorScheme(.dark)
+                .presentationBackground(background)
+                .preferredColorScheme(colorScheme)
         }
     }
 }

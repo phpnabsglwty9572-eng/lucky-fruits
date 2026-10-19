@@ -2,11 +2,11 @@ import SwiftUI
 import UIKit
 
 enum AppRoute {
-    case loading, home, modes, stages, game
+    case loading, home, modes, stages, game, window, crush
 }
 
 enum PlayMode {
-    case classic, stage
+    case classic, bet, stage
 }
 
 enum SlotSymbol: String, CaseIterable, Identifiable, Codable {
@@ -58,9 +58,12 @@ enum SlotSymbol: String, CaseIterable, Identifiable, Codable {
 
     static func randomSpin() -> SlotSymbol {
         let bag: [SlotSymbol] = [
-            .cherry, .cherry, .cherry,
-            .lemon, .lemon, .orange, .orange,
-            .grape, .grape, .melon, .bell, .star, .bar, .seven
+            .cherry, .cherry, .cherry, .cherry, .cherry,
+            .lemon, .lemon, .lemon, .lemon,
+            .orange, .orange, .orange,
+            .grape, .grape, .grape,
+            .melon, .melon, .bell, .bell,
+            .star, .star, .bar, .seven
         ]
         return bag.randomElement() ?? .cherry
     }
@@ -77,16 +80,24 @@ struct StageDef: Identifiable, Equatable {
     let diagonals: Bool
     let wildStar: Bool
     let payoutScale: Int
+    var rows: Bool = true
+    var maxLocks: Int = 5
+    var allowSwap: Bool = true
+    var onlySymbol: SlotSymbol? = nil
 
     static let campaign: [StageDef] = [
-        StageDef(id: 0, name: "Cherry Warmup", blurb: "Win 20 on rows in 28 spins", spins: 28, bet: 10, target: 20, reward: 100, diagonals: false, wildStar: false, payoutScale: 1),
-        StageDef(id: 1, name: "Marquee Raise", blurb: "Win 40 on rows in 24 spins", spins: 24, bet: 10, target: 40, reward: 120, diagonals: false, wildStar: false, payoutScale: 1),
-        StageDef(id: 2, name: "Diagonals On", blurb: "Diagonals count · win 50 in 18", spins: 18, bet: 10, target: 50, reward: 150, diagonals: true, wildStar: false, payoutScale: 1),
-        StageDef(id: 3, name: "Wild Stars", blurb: "Stars are wild · win 180 in 16", spins: 16, bet: 10, target: 180, reward: 180, diagonals: true, wildStar: true, payoutScale: 1),
-        StageDef(id: 4, name: "Double Lights", blurb: "5-line pays ×2 · win 80 in 14", spins: 14, bet: 10, target: 80, reward: 220, diagonals: true, wildStar: false, payoutScale: 2),
-        StageDef(id: 5, name: "High Stakes", blurb: "Bet locked at 50 · win 150 in 16", spins: 16, bet: 50, target: 150, reward: 300, diagonals: false, wildStar: false, payoutScale: 1),
-        StageDef(id: 6, name: "Star Cross", blurb: "Diagonals + wilds · win 1000 in 14", spins: 14, bet: 50, target: 1000, reward: 450, diagonals: true, wildStar: true, payoutScale: 1),
-        StageDef(id: 7, name: "Finale Lights", blurb: "Diagonals + wilds + ×2 · win 1800 in 12", spins: 12, bet: 50, target: 1800, reward: 800, diagonals: true, wildStar: true, payoutScale: 2)
+        StageDef(id: 0, name: "Cherry Warmup", blurb: "Serve 20 on rows in 28 restocks", spins: 28, bet: 10, target: 20, reward: 100, diagonals: false, wildStar: false, payoutScale: 1),
+        StageDef(id: 1, name: "Marquee Raise", blurb: "Serve 40 on rows in 24 restocks", spins: 24, bet: 10, target: 40, reward: 120, diagonals: false, wildStar: false, payoutScale: 1),
+        StageDef(id: 2, name: "Diagonals On", blurb: "Diagonals count · serve 50 in 18", spins: 18, bet: 10, target: 50, reward: 150, diagonals: true, wildStar: false, payoutScale: 1),
+        StageDef(id: 3, name: "Wild Stars", blurb: "Stars are wild · serve 180 in 16", spins: 16, bet: 10, target: 180, reward: 180, diagonals: true, wildStar: true, payoutScale: 1),
+        StageDef(id: 4, name: "Double Lights", blurb: "5-line serves ×2 · 80 in 14", spins: 14, bet: 10, target: 80, reward: 220, diagonals: true, wildStar: false, payoutScale: 2),
+        StageDef(id: 5, name: "High Heat", blurb: "Richer dishes · serve 150 in 16", spins: 16, bet: 50, target: 150, reward: 300, diagonals: false, wildStar: false, payoutScale: 1),
+        StageDef(id: 6, name: "Star Cross", blurb: "Diagonals + wilds · serve 1000 in 14", spins: 14, bet: 50, target: 1000, reward: 450, diagonals: true, wildStar: true, payoutScale: 1),
+        StageDef(id: 7, name: "Full House", blurb: "Diagonals + wilds + ×2 · 1800 in 12", spins: 12, bet: 50, target: 1800, reward: 800, diagonals: true, wildStar: true, payoutScale: 2),
+        StageDef(id: 8, name: "Cherry Ticket", blurb: "Only Cherry lines score · 80 in 18", spins: 18, bet: 10, target: 80, reward: 260, diagonals: false, wildStar: false, payoutScale: 1, onlySymbol: .cherry),
+        StageDef(id: 9, name: "Tight Keep", blurb: "Keep 2 fruits max · serve 120 in 14", spins: 14, bet: 10, target: 120, reward: 300, diagonals: false, wildStar: false, payoutScale: 1, maxLocks: 2),
+        StageDef(id: 10, name: "Cross Only", blurb: "Only diagonals score · 80 in 16", spins: 16, bet: 10, target: 80, reward: 340, diagonals: true, wildStar: true, payoutScale: 1, rows: false),
+        StageDef(id: 11, name: "No Swap", blurb: "No swapping · serve 100 in 14", spins: 14, bet: 10, target: 100, reward: 400, diagonals: false, wildStar: false, payoutScale: 1, allowSwap: false)
     ]
 }
 
@@ -120,7 +131,7 @@ struct SpinResult {
 
 struct HarvestOrder: Identifiable, Equatable, Codable {
     enum Kind: String, Codable {
-        case lineSymbol, multiLine, stars, swapWin
+        case lineSymbol, multiLine, stars, swapWin, coverShift
     }
 
     var id: UUID
@@ -137,16 +148,21 @@ struct HarvestOrder: Identifiable, Equatable, Codable {
 }
 
 private struct SpinRules {
+    var rows: Bool = true
     var diagonals: Bool
     var wildStar: Bool
     var payoutScale: Int
+    var onlySymbol: SlotSymbol? = nil
 
     var lines: [[(Int, Int)]] {
-        var value: [[(Int, Int)]] = [
-            [(0, 0), (0, 1), (0, 2)],
-            [(1, 0), (1, 1), (1, 2)],
-            [(2, 0), (2, 1), (2, 2)]
-        ]
+        var value: [[(Int, Int)]] = []
+        if rows {
+            value.append(contentsOf: [
+                [(0, 0), (0, 1), (0, 2)],
+                [(1, 0), (1, 1), (1, 2)],
+                [(2, 0), (2, 1), (2, 2)]
+            ])
+        }
         if diagonals {
             value.append([(0, 0), (1, 1), (2, 2)])
             value.append([(0, 2), (1, 1), (2, 0)])
@@ -188,16 +204,21 @@ final class GameStore: ObservableObject {
     @Published var burstSubtitle = "Tap to continue"
     @Published var coinFlash = false
     @Published var daily: DailyGift?
-    @Published var heldColumns: Set<Int> = []
+    @Published var lockedCells: Set<Int> = []
     @Published var swapsLeft = 0
     @Published var swapPicked: Int?
+    @Published var swapMode = false
+    @Published var canServe = false
     @Published var orders: [HarvestOrder] = []
+    @Published var menu: [HarvestOrder] = []
+    @Published var shiftNumber = 1
     @Published var album: Set<String> = []
     @Published var blendCharge = 0
     @Published var blendWild: SlotSymbol?
     @Published var blendSpinsLeft = 0
     @Published var showBlendPick = false
     @Published var showAlbum = false
+    @Published var showCoach = false
     @Published var lastOrderClear: String?
 
     let bets = [10, 50, 100]
@@ -211,13 +232,26 @@ final class GameStore: ObservableObject {
     private var settleMult = 1
     private var pendingBlendPick = false
     private var albumBonusClaimed = false
+    private var swappedThisRound = false
+    private var warmRestock = false
+    private var coachToken = 0
     private static let dailyRewards = [80, 120, 180, 250, 350, 500, 800]
 
-    var inBonus: Bool { mode == .classic && freeSpinsLeft > 0 }
+    var inBonus: Bool { false }
 
-    var canHold: Bool { !isSpinning && stageEnd == nil && !showWinBurst && !showBlendPick }
+    var canAct: Bool { !isSpinning && stageEnd == nil && !showWinBurst && !showBlendPick }
 
-    var canSwap: Bool { canHold && swapsLeft > 0 }
+    var canSwap: Bool { canAct && swapMode && swapsLeft > 0 }
+
+    var maxLocks: Int {
+        if mode == .stage, let stage = currentStage { return stage.maxLocks }
+        return 5
+    }
+
+    private var stageAllowsSwap: Bool {
+        if mode == .stage, currentStage?.allowSwap == false { return false }
+        return true
+    }
 
     var albumCount: Int { album.count }
 
@@ -261,16 +295,28 @@ final class GameStore: ObservableObject {
             orders = saved.filter { !$0.done }
         }
         refillOrders()
+        let storedShift = defaults.integer(forKey: "lf.shift")
+        shiftNumber = max(1, storedShift)
+        if let data = defaults.data(forKey: "lf.menu"),
+           let saved = try? JSONDecoder().decode([HarvestOrder].self, from: data),
+           saved.contains(where: { !$0.done }) {
+            menu = saved
+        } else {
+            menu = makeMenu(for: shiftNumber)
+        }
+        syncCoverShift()
     }
 
     var canSpin: Bool {
         if isSpinning || showBlendPick || showWinBurst { return false }
+        if lockedCells.count >= 9 { return false }
         if mode == .stage {
             return stageEnd == nil && stageSpinsLeft > 0
         }
-        if freeSpinsLeft > 0 { return true }
-        return coins >= bet
+        return true
     }
+
+    var isWager: Bool { mode == .bet }
 
     var currentStage: StageDef? {
         guard stageIndex >= 0, stageIndex < StageDef.campaign.count else { return nil }
@@ -297,6 +343,10 @@ final class GameStore: ObservableObject {
         if let data = try? JSONEncoder().encode(orders) {
             defaults.set(data, forKey: "lf.orders")
         }
+        defaults.set(shiftNumber, forKey: "lf.shift")
+        if let data = try? JSONEncoder().encode(menu) {
+            defaults.set(data, forKey: "lf.menu")
+        }
     }
 
     func bootstrap() async {
@@ -319,13 +369,45 @@ final class GameStore: ObservableObject {
         hitCells = []
         freeSpinsLeft = 0
         winStreak = 0
-        heldColumns = []
+        lockedCells = []
         clearSwap()
+        swapMode = false
+        canServe = false
+        lastOrderClear = nil
+        refillOrders()
+        bet = 10
+        grid = Self.starterGrid()
+        warmRestock = true
+        previewBoard()
+        syncCoverShift()
+        if orders.contains(where: { $0.kind == .coverShift && !$0.done }) {
+            banner = "Score under 100 · serve 2 plates for +120"
+        }
+        route = .game
+        presentCoach()
+    }
+
+    func openBet() {
+        stopReelMotion()
+        mode = .bet
+        stageEnd = nil
+        showWinBurst = false
+        hitCells = []
+        freeSpinsLeft = 0
+        winStreak = 0
+        lockedCells = []
+        clearSwap()
+        swapMode = false
+        canServe = false
         lastOrderClear = nil
         refillOrders()
         bet = savedClassicBet
-        refreshClassicBanner()
+        grid = Self.starterGrid()
+        warmRestock = true
+        previewBoard()
+        banner = "Bet \(bet) · restock costs \(bet)"
         route = .game
+        presentCoach()
     }
 
     func beginStage(_ index: Int) {
@@ -345,13 +427,17 @@ final class GameStore: ObservableObject {
         lastWin = 0
         freeSpinsLeft = 0
         winStreak = 0
-        heldColumns = []
+        lockedCells = []
         clearSwap()
+        swapMode = false
+        canServe = false
         lastOrderClear = nil
         bet = stage.bet
         grid = GameStore.mockGrid()
+        previewBoard()
         refreshStageBanner()
         route = .game
+        presentCoach()
     }
 
     func leaveGame() {
@@ -360,10 +446,13 @@ final class GameStore: ObservableObject {
         stageEnd = nil
         freeSpinsLeft = 0
         winStreak = 0
-        heldColumns = []
+        lockedCells = []
         clearSwap()
+        swapMode = false
+        canServe = false
         showBlendPick = false
         pendingBlendPick = false
+        dismissCoach()
         route = mode == .stage ? .stages : .home
     }
 
@@ -371,11 +460,29 @@ final class GameStore: ObservableObject {
         stopReelMotion()
         stageEnd = nil
         showWinBurst = false
-        heldColumns = []
+        lockedCells = []
         clearSwap()
+        swapMode = false
+        canServe = false
         showBlendPick = false
         pendingBlendPick = false
         route = .stages
+    }
+
+    func presentCoach() {
+        coachToken += 1
+        let token = coachToken
+        showCoach = true
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 10_000_000_000)
+            guard coachToken == token else { return }
+            showCoach = false
+        }
+    }
+
+    func dismissCoach() {
+        coachToken += 1
+        showCoach = false
     }
 
     func dismissWinBurst() {
@@ -392,28 +499,56 @@ final class GameStore: ObservableObject {
     }
 
     func setBet(_ value: Int) {
-        guard !isSpinning else { return }
-        if inBonus {
-            banner = "Free spins · bet locked at \(bet)"
-            audio.click()
-            return
-        }
-        if mode == .stage {
-            banner = "Stage bet \(bet) · \(stageSpinsLeft) spins left"
-            audio.click()
-            return
-        }
-        if value == 100 {
-            bet = min(100, max(10, coins))
-            if coins >= 100 { bet = 100 }
-        } else {
-            bet = value
-        }
+        guard isWager, !isSpinning else { return }
+        bet = value
         savedClassicBet = bet
         persist()
         audio.click()
         haptic(.light)
-        refreshClassicBanner()
+        banner = "Bet \(bet) · restock costs \(bet)"
+    }
+
+    func toggleSwapMode() {
+        guard canAct else { return }
+        if mode == .stage, currentStage?.allowSwap == false {
+            banner = "No swaps this stage"
+            audio.click()
+            return
+        }
+        if swapsLeft <= 0 {
+            banner = "Restock to earn a swap"
+            audio.click()
+            return
+        }
+        swapMode.toggle()
+        swapPicked = nil
+        audio.click()
+        haptic(.light)
+        banner = swapMode ? "Tap two fruits to swap" : "Swap off · lock fruits or serve"
+    }
+
+    func clearLocks() {
+        guard canAct else { return }
+        lockedCells = []
+        audio.click()
+        haptic(.light)
+        banner = "Locks cleared"
+    }
+
+    func serve() {
+        guard canAct, canServe else {
+            banner = "Make a 3-match, then SERVE"
+            audio.click()
+            return
+        }
+        let rules = activeRules
+        let result = payout(for: grid, multiplier: comboMultiplier, rules: rules)
+        guard result.lineCount > 0 else {
+            canServe = false
+            audio.click()
+            return
+        }
+        applyServe(result)
     }
 
     func resetProgress() {
@@ -431,9 +566,13 @@ final class GameStore: ObservableObject {
         jackpot = jackpotSeed
         winStreak = 0
         freeSpinsLeft = 0
-        heldColumns = []
+        lockedCells = []
         clearSwap()
+        swapMode = false
+        canServe = false
         orders = []
+        shiftNumber = 1
+        menu = makeMenu(for: 1)
         blendCharge = 0
         blendWild = nil
         blendSpinsLeft = 0
@@ -441,6 +580,7 @@ final class GameStore: ObservableObject {
         pendingBlendPick = false
         lastOrderClear = nil
         refillOrders()
+        syncCoverShift()
         mode = .classic
         persist()
         refreshClassicBanner()
@@ -462,6 +602,7 @@ final class GameStore: ObservableObject {
     func claimDaily() {
         guard let gift = daily else { return }
         coins += gift.reward
+        syncCoverShift()
         defaults.set(Self.dayKey(), forKey: "lf.daily.last")
         defaults.set(gift.day, forKey: "lf.daily.streak")
         persist()
@@ -476,24 +617,33 @@ final class GameStore: ObservableObject {
         UIImpactFeedbackGenerator(style: style).impactOccurred()
     }
 
-    func toggleHold(_ col: Int) {
-        guard canHold, (0..<3).contains(col) else { return }
-        if heldColumns.contains(col) {
-            heldColumns.remove(col)
-        } else if heldColumns.count >= 2 {
-            banner = "Hold 2 reels max"
+    func tapCell(_ index: Int) {
+        guard canAct, (0..<9).contains(index) else { return }
+        if swapMode, swapsLeft > 0 {
+            performSwap(index)
+            return
+        }
+        toggleLock(index)
+    }
+
+    private func toggleLock(_ index: Int) {
+        if lockedCells.contains(index) {
+            lockedCells.remove(index)
+        } else if lockedCells.count >= maxLocks {
+            banner = "Keep \(maxLocks) fruits max"
             audio.click()
             return
         } else {
-            heldColumns.insert(col)
+            lockedCells.insert(index)
         }
         audio.click()
         haptic(.light)
-        refreshHoldHint()
+        banner = lockedCells.isEmpty
+            ? "Tap fruits to keep them"
+            : "Keeping \(lockedCells.count) · RESTOCK the rest"
     }
 
-    func tapCell(_ index: Int) {
-        guard canSwap, (0..<9).contains(index) else { return }
+    private func performSwap(_ index: Int) {
         if swapPicked == index {
             swapPicked = nil
             audio.click()
@@ -517,15 +667,16 @@ final class GameStore: ObservableObject {
         grid = next
         swapsLeft = 0
         swapPicked = nil
+        swapMode = false
+        swappedThisRound = true
         audio.tick()
         haptic(.rigid)
-        settleLandedGrid(
-            playingStage: mode == .stage,
-            stageAtStart: stageIndex,
-            consumeHolds: false,
-            grantSwap: false,
-            usedSwap: true
-        )
+        previewBoard()
+        if mode == .stage, stageSpinsLeft <= 0, !canServe {
+            resolveStageEnd()
+        } else {
+            banner = canServe ? "Line ready · SERVE it" : "No line yet · lock and restock"
+        }
     }
 
     func pickBlend(_ symbol: SlotSymbol) {
@@ -538,17 +689,25 @@ final class GameStore: ObservableObject {
         persist()
         audio.win()
         haptic(.heavy)
-        banner = "Blend wild \(symbol.title) · next 3 spins"
+        banner = "Chef wild \(symbol.title) · next 3 restocks"
     }
 
     private func clearSwap() {
         swapsLeft = 0
         swapPicked = nil
+        swapMode = false
     }
 
     func spin() async {
         guard canSpin else {
-            if mode == .classic, freeSpinsLeft == 0, coins < bet { banner = "Not enough coins" }
+            if lockedCells.count >= 9 {
+                banner = "Unlock a fruit to restock"
+            }
+            return
+        }
+        if isWager, coins < bet {
+            banner = "Not enough score · bet \(bet)"
+            audio.click()
             return
         }
 
@@ -556,29 +715,21 @@ final class GameStore: ObservableObject {
         let generation = spinGeneration
         let playingStage = mode == .stage
         let stageAtStart = stageIndex
-        let bonusSpin = !playingStage && freeSpinsLeft > 0
-        let appliedMult = comboMultiplier
-        let rules = activeRules
-        let holds = heldColumns
-        let heldSnapshot = grid
-        settleRules = rules
-        settleMult = appliedMult
-        var chargedClassic = false
-        var refundStageSpin = playingStage
-        var refundFreeSpin = bonusSpin
+        let locks = lockedCells
+        let snapshot = grid
+        var refundStage = playingStage
+        var chargedBet = false
 
         func abortIfStale() -> Bool {
             guard generation != spinGeneration else { return false }
-            if chargedClassic {
+            if chargedBet {
                 coins += bet
-                chargedClassic = false
+                chargedBet = false
                 persist()
-            } else if refundStageSpin, mode == .stage, stageIndex == stageAtStart {
+            }
+            if refundStage, mode == .stage, stageIndex == stageAtStart {
                 stageSpinsLeft += 1
-                refundStageSpin = false
-            } else if refundFreeSpin, mode == .classic {
-                freeSpinsLeft += 1
-                refundFreeSpin = false
+                refundStage = false
             }
             isSpinning = false
             reelBlur = 0
@@ -586,34 +737,38 @@ final class GameStore: ObservableObject {
             return true
         }
 
+        let wastedLine = canServe
         isSpinning = true
+        canServe = false
         hitCells = []
         showWinBurst = false
-        lastWin = 0
         swapPicked = nil
+        swapMode = false
         swapsLeft = 0
+        swappedThisRound = false
         lastOrderClear = nil
+        if wastedLine { winStreak = 0 }
 
         if playingStage {
             stageSpinsLeft -= 1
-        } else if bonusSpin {
-            freeSpinsLeft -= 1
-        } else {
+        } else if isWager {
             coins -= bet
-            jackpot += max(1, bet / 5)
-            chargedClassic = true
+            chargedBet = true
             persist()
         }
 
+        let landing = landingGrid(locking: locks, snapshot: snapshot)
         audio.spin()
         haptic(.rigid)
-        withAnimation(.easeIn(duration: 0.12)) { reelBlur = holds.count == 3 ? 0 : 7 }
+        withAnimation(.easeIn(duration: 0.12)) { reelBlur = locks.count >= 9 ? 0 : 7 }
 
-        let moving = (0..<3).filter { !holds.contains($0) }
-        for tick in 0..<24 {
+        let moving = (0..<3).filter { col in
+            (0..<3).contains { row in !locks.contains(row * 3 + col) }
+        }
+        for tick in 0..<22 {
             if abortIfStale() { return }
             spinningColumn = moving.isEmpty ? -1 : moving[tick % moving.count]
-            grid = GameStore.mixedGrid(holding: holds, snapshot: heldSnapshot)
+            grid = GameStore.mixedGrid(locking: locks, snapshot: snapshot)
             if tick % 2 == 0 { audio.tick() }
             try? await Task.sleep(nanoseconds: UInt64(26_000_000 + tick * 8_000_000))
         }
@@ -622,92 +777,151 @@ final class GameStore: ObservableObject {
 
         withAnimation(.easeOut(duration: 0.22)) { reelBlur = 0 }
         spinningColumn = -1
-        grid = GameStore.mixedGrid(holding: holds, snapshot: heldSnapshot)
+        grid = landing
         audio.stopReel()
-        chargedClassic = false
-        refundStageSpin = false
-        refundFreeSpin = false
-        settleLandedGrid(playingStage: playingStage, stageAtStart: stageAtStart, consumeHolds: true, grantSwap: true, usedSwap: false)
-        isSpinning = false
-    }
-
-    private func settleLandedGrid(playingStage: Bool, stageAtStart: Int, consumeHolds: Bool, grantSwap: Bool, usedSwap: Bool) {
-        var result = payout(for: grid, multiplier: settleMult, rules: settleRules)
-        if result.jackpotHit, mode == .classic {
-            result.amount += jackpot
-            lastWin = result.amount
-            jackpot = jackpotSeed
-        } else {
-            lastWin = result.amount
-        }
-
-        hitCells = result.cells
-        if result.freeAwarded > 0, mode == .classic {
-            freeSpinsLeft += result.freeAwarded
-        }
-        if result.extraStageSpins > 0, mode == .stage, stageIndex == stageAtStart {
-            stageSpinsLeft += result.extraStageSpins
-        }
-
-        if result.amount > 0 {
-            winStreak += 1
-        } else if grantSwap {
-            winStreak = 0
-        }
-
-        let albumComplete = stampAlbum(result.matchedSymbols)
-        chargeBlend(result.lineCount)
-        if !playingStage {
-            creditOrders(result, usedSwap: usedSwap)
-        }
-
-        if playingStage {
-            guard mode == .stage, stageIndex == stageAtStart else { return }
-            stageWon += result.amount
-            if result.amount > 0 || result.extraStageSpins > 0 || albumComplete {
-                celebrate(result, multiplier: settleMult, albumComplete: albumComplete)
-            }
-            resolveStageEnd()
-            if stageEnd == nil, result.amount == 0, result.extraStageSpins == 0 {
-                if let miss = result.nearMiss {
-                    banner = grantSwap ? "\(miss) · SWAP two fruits" : miss
-                } else {
-                    refreshStageBanner()
-                }
-                haptic(.light)
-            } else if stageEnd?.cleared == false, result.amount == 0 {
-                haptic(.light)
-            }
-        } else {
-            guard mode == .classic else { return }
-            if result.amount > 0 {
-                coins += result.amount
-                celebrate(result, multiplier: settleMult, albumComplete: albumComplete)
-            } else if result.freeAwarded > 0 || albumComplete {
-                celebrate(result, multiplier: settleMult, albumComplete: albumComplete)
-            } else if let miss = result.nearMiss {
-                banner = grantSwap ? "\(miss) · SWAP two fruits" : miss
-                haptic(.light)
-            } else {
-                refreshClassicBanner()
-                haptic(.light)
-            }
-            persist()
-        }
-
-        if consumeHolds { heldColumns = [] }
-        if grantSwap {
-            swapsLeft = (result.amount == 0 && result.freeAwarded == 0 && result.extraStageSpins == 0 && stageEnd == nil) ? 1 : 0
-        } else if result.amount > 0 {
-            swapsLeft = 0
-        }
-        if result.amount > 0 { heldColumns = [] }
-        if grantSwap, blendWild != nil {
+        refundStage = false
+        chargedBet = false
+        if blendWild != nil {
             blendSpinsLeft -= 1
             if blendSpinsLeft <= 0 {
                 blendWild = nil
                 blendSpinsLeft = 0
             }
+        }
+        swapsLeft = stageAllowsSwap ? 1 : 0
+        previewBoard()
+        isSpinning = false
+        persist()
+    }
+
+    private func landingGrid(locking: Set<Int>, snapshot: [[SlotSymbol]]) -> [[SlotSymbol]] {
+        var grid = GameStore.mixedGrid(locking: locking, snapshot: snapshot)
+        let wanted: [SlotSymbol] = mode == .classic
+            ? menu.compactMap { $0.done ? nil : $0.symbol }
+            : orders.compactMap { $0.kind == .lineSymbol ? $0.symbol : nil }
+        var helped = false
+        for row in 0..<3 {
+            let indexes = [row * 3, row * 3 + 1, row * 3 + 2]
+            let symbols = indexes.map { snapshot[$0 / 3][$0 % 3] }
+            guard let pair = Self.pairSymbol(symbols),
+                  let miss = symbols.indices.first(where: { symbols[$0] != pair }) else { continue }
+            let index = indexes[miss]
+            guard !locking.contains(index) else { continue }
+            let chance = warmRestock && !helped ? 100 : 76
+            if Int.random(in: 0..<100) < chance {
+                grid[row][index % 3] = pair
+                helped = true
+            }
+        }
+        if !helped, Int.random(in: 0..<100) < 42 {
+            let row = (0..<3).first { row in
+                (0..<3).contains { col in !locking.contains(row * 3 + col) }
+            } ?? 0
+            let symbol = wanted.randomElement() ?? [.cherry, .lemon, .orange].randomElement() ?? .cherry
+            for col in 0..<3 where !locking.contains(row * 3 + col) {
+                grid[row][col] = symbol
+            }
+        }
+        warmRestock = false
+        return grid
+    }
+
+    private static func pairSymbol(_ symbols: [SlotSymbol]) -> SlotSymbol? {
+        guard symbols.count == 3 else { return nil }
+        if symbols[0] == symbols[1], symbols[0] != symbols[2] { return symbols[0] }
+        if symbols[1] == symbols[2], symbols[0] != symbols[1] { return symbols[1] }
+        if symbols[0] == symbols[2], symbols[0] != symbols[1] { return symbols[0] }
+        return nil
+    }
+
+    private func previewBoard() {
+        let result = payout(for: grid, multiplier: comboMultiplier, rules: activeRules)
+        hitCells = result.cells
+        canServe = result.lineCount > 0
+        if canServe {
+            banner = mode == .classic ? menuServeBanner(result) : "Line ready · SERVE, or swap for a better fruit"
+        } else if let ignored = ignoredLineBanner() {
+            banner = ignored
+        } else if let miss = result.nearMiss {
+            banner = "\(miss) · swap or restock"
+        } else if mode == .stage {
+            refreshStageBanner()
+        } else {
+            refreshClassicBanner()
+        }
+    }
+
+    private func menuServeBanner(_ result: SpinResult) -> String {
+        let open = menu.filter { !$0.done }
+        let waiting = open.first?.title ?? "the menu"
+        let onMenu = result.matchedSymbols.contains { symbol in
+            open.contains { $0.symbol == symbol }
+        }
+        if onMenu { return "On the menu · SERVE" }
+        let name = result.matchedSymbols.first?.title ?? "This line"
+        return "\(name) is off the menu · wants \(waiting)"
+    }
+
+    private func ignoredLineBanner() -> String? {
+        guard mode == .stage, let stage = currentStage else { return nil }
+        if let only = stage.onlySymbol {
+            let any = payout(
+                for: grid,
+                multiplier: 1,
+                rules: SpinRules(diagonals: stage.diagonals, wildStar: stage.wildStar, payoutScale: 1)
+            )
+            if any.lineCount > 0 { return "Only \(only.title) lines score" }
+        }
+        if !stage.rows {
+            let rows = payout(
+                for: grid,
+                multiplier: 1,
+                rules: SpinRules(rows: true, diagonals: false, wildStar: stage.wildStar, payoutScale: 1)
+            )
+            if rows.lineCount > 0 { return "Rows do not count · serve a diagonal" }
+        }
+        return nil
+    }
+
+    private func applyServe(_ result: SpinResult) {
+        lastWin = result.amount
+        hitCells = result.cells
+        let albumComplete = stampAlbum(result.matchedSymbols)
+        chargeBlend(result.lineCount)
+        creditOrders(result, usedSwap: swappedThisRound)
+        let menuCredit = creditMenu(result)
+        let covered = creditCoverShift()
+        swappedThisRound = false
+        let servedMult = comboMultiplier
+        if mode == .stage {
+            stageWon += result.amount
+            celebrate(result, multiplier: servedMult, albumComplete: albumComplete)
+        } else {
+            coins += result.amount + menuCredit.bonus
+            celebrate(result, multiplier: servedMult, albumComplete: albumComplete)
+        }
+        winStreak += 1
+        if mode == .stage {
+            resolveStageEnd()
+        }
+
+        var next = grid
+        for cell in result.cells {
+            next[cell / 3][cell % 3] = SlotSymbol.randomSpin()
+            lockedCells.remove(cell)
+        }
+        grid = next
+        swapsLeft = stageAllowsSwap ? 1 : 0
+        swapMode = false
+        swapPicked = nil
+        if stageEnd == nil {
+            previewBoard()
+        }
+        syncCoverShift()
+        if covered {
+            banner = "Cover shift · +120"
+        } else if mode == .classic, let note = menuCredit.note {
+            banner = note
         }
         presentBlendPickIfReady()
         persist()
@@ -728,15 +942,18 @@ final class GameStore: ObservableObject {
 
         if cleared {
             let first = stageIndex == clearedStages
+            let tip = max(40, (stage.reward * 3) / 10)
             if first {
                 clearedStages = stageIndex + 1
                 coins += stage.reward
-                persist()
+            } else {
+                coins += tip
             }
+            persist()
             let lastIndex = StageDef.campaign.count - 1
             stageEnd = StageEnd(
                 cleared: true,
-                reward: first ? stage.reward : 0,
+                reward: first ? stage.reward : tip,
                 firstClear: first,
                 finale: first && stageIndex == lastIndex,
                 got: stageWon,
@@ -744,7 +961,7 @@ final class GameStore: ObservableObject {
                 stageName: stage.name,
                 hasNext: first && stageIndex < lastIndex
             )
-            banner = first ? "Cleared · +\(stage.reward)" : "Cleared again"
+            banner = first ? "Cleared · +\(stage.reward)" : "Replay tip · +\(tip)"
         } else {
             stageEnd = StageEnd(
                 cleared: false,
@@ -760,27 +977,24 @@ final class GameStore: ObservableObject {
         }
     }
 
-    private func refreshHoldHint() {
-        if !heldColumns.isEmpty {
-            banner = "Holding \(heldColumns.count) · SPIN respin the rest"
-        } else if swapsLeft > 0 {
-            banner = "SWAP two fruits or HOLD a reel"
-        } else if mode == .stage {
-            refreshStageBanner()
-        } else {
-            refreshClassicBanner()
-        }
-    }
-
     private func refreshStageBanner() {
         guard let stage = currentStage else { return }
-        var text = "Stage \(stageIndex + 1) \(stage.name) · \(stageSpinsLeft) left"
+        var text = "Stage \(stageIndex + 1) \(stage.name) · \(stageSpinsLeft) restocks"
+        if let only = stage.onlySymbol {
+            text = "Only \(only.title) · \(stageSpinsLeft) restocks"
+        } else if !stage.rows {
+            text = "Diagonals only · \(stageSpinsLeft) restocks"
+        } else if !stage.allowSwap {
+            text = "No swap · \(stageSpinsLeft) restocks"
+        } else if stage.maxLocks < 5 {
+            text = "Keep \(stage.maxLocks) max · \(stageSpinsLeft) restocks"
+        }
         if let wild = blendWild, blendSpinsLeft > 0 {
             text += " · wild \(wild.title)"
+        } else if canServe {
+            text += " · SERVE a line"
         } else if winStreak >= 1 {
-            text += " · Streak ×\(comboMultiplier)"
-        } else if swapsLeft > 0 {
-            text += " · SWAP / HOLD"
+            text += " · Combo ×\(comboMultiplier)"
         }
         banner = text
     }
@@ -790,29 +1004,23 @@ final class GameStore: ObservableObject {
             banner = note
             return
         }
-        if freeSpinsLeft > 0 {
-            banner = "Free spins \(freeSpinsLeft) · wild stars · diagonals"
-            return
-        }
         if let wild = blendWild, blendSpinsLeft > 0 {
-            banner = "Blend wild \(wild.title) · \(blendSpinsLeft) left"
+            banner = "Chef wild \(wild.title) · \(blendSpinsLeft) restocks"
             return
         }
-        if !heldColumns.isEmpty {
-            banner = "Holding \(heldColumns.count) · SPIN respin the rest"
+        if canServe {
+            banner = "Serve the line · fill kitchen orders"
             return
         }
-        var text = "Jackpot \(jackpot) · \(blendLabel)"
-        if winStreak >= 1 {
-            text += " · Streak ×\(comboMultiplier)"
-        } else if swapsLeft > 0 {
-            text += " · SWAP two fruits"
+        if !lockedCells.isEmpty {
+            banner = "Keeping \(lockedCells.count) · RESTOCK the rest"
+            return
         }
-        banner = text
+        banner = "Shift \(shiftNumber) · serve the menu · \(blendLabel)"
     }
 
     private func isFeaturedWin(_ result: SpinResult) -> Bool {
-        result.jackpotHit || result.freeAwarded > 0 || result.extraStageSpins > 0 || result.amount >= bet * 10
+        result.lineCount >= 2 || result.amount >= 80
     }
 
     private func celebrate(_ result: SpinResult, multiplier: Int, albumComplete: Bool = false) {
@@ -835,37 +1043,28 @@ final class GameStore: ObservableObject {
             banner = "Album complete · +400"
             return
         }
-        if result.jackpotHit {
-            burstTitle = "JACKPOT"
-            burstSubtitle = result.freeAwarded > 0 ? "Free spins +\(result.freeAwarded)" : "Lucky 7s take the pot"
-        } else if result.freeAwarded > 0, result.amount == 0 {
-            burstTitle = "FREE SPINS"
-            burstSubtitle = "Stars scatter · free +\(result.freeAwarded)"
-        } else if result.freeAwarded > 0 {
-            burstTitle = "LUCKY WIN"
-            burstSubtitle = "Free spins +\(result.freeAwarded)"
-        } else if result.extraStageSpins > 0 {
-            burstTitle = "EXTRA SPINS"
-            burstSubtitle = "Marquee extra +\(result.extraStageSpins)"
+        if result.lineCount >= 2 {
+            burstTitle = "DOUBLE SERVE"
+            burstSubtitle = "Two dishes out"
         } else if multiplier > 1 {
-            burstTitle = "STREAK ×\(multiplier)"
-            burstSubtitle = "Tap to continue"
+            burstTitle = "COMBO ×\(multiplier)"
+            burstSubtitle = "Keep serving"
         } else {
-            burstTitle = "LUCKY WIN"
-            burstSubtitle = "Tap to continue"
+            burstTitle = "SERVED"
+            burstSubtitle = result.matchedSymbols.first.map { "\($0.title) is out" } ?? "Tap to continue"
         }
-        banner = result.jackpotHit ? "Jackpot hit \(result.amount)" : "Won \(result.amount)"
-        if result.amount == 0, result.freeAwarded > 0 {
-            banner = "Free spins +\(result.freeAwarded)"
-        }
+        banner = "Served +\(result.amount)"
     }
 
     private var activeRules: SpinRules {
         if mode == .stage, let stage = currentStage {
-            return SpinRules(diagonals: stage.diagonals, wildStar: stage.wildStar, payoutScale: stage.payoutScale)
-        }
-        if freeSpinsLeft > 0 {
-            return SpinRules(diagonals: true, wildStar: true, payoutScale: 1)
+            return SpinRules(
+                rows: stage.rows,
+                diagonals: stage.diagonals,
+                wildStar: stage.wildStar,
+                payoutScale: stage.payoutScale,
+                onlySymbol: stage.onlySymbol
+            )
         }
         if winStreak >= 1 {
             return SpinRules(diagonals: true, wildStar: false, payoutScale: 1)
@@ -883,12 +1082,11 @@ final class GameStore: ObservableObject {
         for line in rules.lines {
             let symbols = line.map { grid[$0.0][$0.1] }
             if let symbol = matchedSymbol(symbols, wilds: wilds) {
-                result.amount += bet * symbol.lineMultiplier * rules.payoutScale * multiplier
+                if let only = rules.onlySymbol, symbol != only { continue }
+                let unit = (mode == .stage || mode == .bet) ? bet : 10
+                result.amount += unit * symbol.lineMultiplier * rules.payoutScale * multiplier
                 result.lineCount += 1
                 result.matchedSymbols.append(symbol)
-                if mode == .classic, symbols.allSatisfy({ $0 == .seven }) {
-                    result.jackpotHit = true
-                }
                 for (row, col) in line {
                     result.cells.insert(row * 3 + col)
                 }
@@ -898,17 +1096,6 @@ final class GameStore: ObservableObject {
         }
 
         result.scatterStars = grid.flatMap { $0 }.filter { $0 == .star }.count
-        if result.scatterStars >= 3 {
-            if mode == .classic {
-                switch result.scatterStars {
-                case 3: result.freeAwarded = 5
-                case 4: result.freeAwarded = 8
-                default: result.freeAwarded = 12
-                }
-            } else {
-                result.extraStageSpins = result.scatterStars >= 5 ? 3 : 2
-            }
-        }
         if result.amount == 0 {
             result.nearMiss = near
         }
@@ -970,8 +1157,78 @@ final class GameStore: ObservableObject {
         }
     }
 
+    private func creditMenu(_ result: SpinResult) -> (bonus: Int, note: String?) {
+        guard mode == .classic else { return (0, nil) }
+        var bonus = 0
+        var plated: [String] = []
+        for index in menu.indices {
+            guard !menu[index].done, let symbol = menu[index].symbol else { continue }
+            let add = result.matchedSymbols.filter { $0 == symbol }.count
+            guard add > 0 else { continue }
+            menu[index].have = min(menu[index].need, menu[index].have + add)
+            bonus += 30 * add
+            plated.append(symbol.title)
+        }
+        if !menu.isEmpty, menu.allSatisfy(\.done) {
+            let clearPay = min(400, 60 + shiftNumber * 40)
+            bonus += clearPay
+            let finished = shiftNumber
+            shiftNumber += 1
+            menu = makeMenu(for: shiftNumber)
+            return (bonus, "Shift \(finished) cleared · +\(bonus)")
+        }
+        if plated.isEmpty {
+            let waiting = menu.first { !$0.done }?.title ?? "the menu"
+            return (0, "Off the menu · shift wants \(waiting)")
+        }
+        if let waiting = menu.first(where: { !$0.done })?.title {
+            return (bonus, "\(plated[0]) plated · +\(bonus) · next \(waiting)")
+        }
+        return (bonus, "On the menu · +\(bonus)")
+    }
+
+    private func makeMenu(for shift: Int) -> [HarvestOrder] {
+        let plan: [(SlotSymbol, Int)]
+        switch shift {
+        case 1:
+            plan = [(.cherry, 1), (.lemon, 1), (.orange, 1)]
+        case 2:
+            plan = [(.cherry, 2), (.lemon, 1), (.orange, 1)]
+        case 3:
+            plan = [(.lemon, 1), (.orange, 1), (.grape, 1)]
+        case 4:
+            plan = [(.orange, 2), (.grape, 1), (.melon, 1)]
+        case 5:
+            plan = [(.grape, 1), (.melon, 1), (.bell, 1)]
+        default:
+            let pool: [SlotSymbol] = [.cherry, .lemon, .orange, .grape, .melon, .bell, .star, .bar, .seven]
+            let start = (shift * 2) % pool.count
+            var picks: [SlotSymbol] = []
+            var step = 0
+            while picks.count < 3 {
+                let symbol = pool[(start + step) % pool.count]
+                if !picks.contains(symbol) { picks.append(symbol) }
+                step += 1
+            }
+            let need = min(3, 1 + (shift - 5) / 2)
+            plan = [(picks[0], need), (picks[1], max(1, need - 1)), (picks[2], 1)]
+        }
+        return plan.map { symbol, need in
+            HarvestOrder(
+                id: UUID(),
+                kind: .lineSymbol,
+                symbol: symbol,
+                need: need,
+                have: 0,
+                reward: 30,
+                title: symbol.title,
+                detail: "Serve \(need)"
+            )
+        }
+    }
+
     private func creditOrders(_ result: SpinResult, usedSwap: Bool) {
-        guard mode == .classic else { return }
+        guard mode == .bet else { return }
         var payout = 0
         var names: [String] = []
         for index in orders.indices {
@@ -988,6 +1245,8 @@ final class GameStore: ObservableObject {
                 if result.scatterStars >= 3 { add = 1 }
             case .swapWin:
                 if usedSwap, result.amount > 0 { add = 1 }
+            case .coverShift:
+                add = 0
             }
             guard add > 0 else { continue }
             orders[index].have = min(orders[index].need, orders[index].have + add)
@@ -1008,9 +1267,41 @@ final class GameStore: ObservableObject {
         persist()
     }
 
+    private func creditCoverShift() -> Bool {
+        guard mode == .classic else { return false }
+        guard let index = orders.firstIndex(where: { $0.kind == .coverShift && !$0.done }) else { return false }
+        orders[index].have = min(orders[index].need, orders[index].have + 1)
+        guard orders[index].done else { return false }
+        coins += orders[index].reward
+        orders.removeAll { $0.kind == .coverShift }
+        coinFlash = true
+        return true
+    }
+
+    private func syncCoverShift() {
+        if let index = orders.firstIndex(where: { $0.kind == .coverShift && $0.have == 0 }), coins >= 100 {
+            orders.remove(at: index)
+        }
+        let active = orders.contains { $0.kind == .coverShift && !$0.done }
+        guard coins < 100, !active else { return }
+        orders.insert(
+            HarvestOrder(
+                id: UUID(),
+                kind: .coverShift,
+                symbol: nil,
+                need: 2,
+                have: 0,
+                reward: 120,
+                title: "Cover",
+                detail: "Serve 2 plates"
+            ),
+            at: 0
+        )
+    }
+
     private func refillOrders() {
         var guardCount = 0
-        while orders.count < 3, guardCount < 12 {
+        while orders.filter({ $0.kind != .coverShift }).count < 3, guardCount < 12 {
             guardCount += 1
             if let next = spawnOrder() {
                 orders.append(next)
@@ -1076,12 +1367,12 @@ final class GameStore: ObservableObject {
         (0..<3).map { _ in (0..<3).map { _ in SlotSymbol.randomSpin() } }
     }
 
-    private static func mixedGrid(holding: Set<Int>, snapshot: [[SlotSymbol]]) -> [[SlotSymbol]] {
+    private static func mixedGrid(locking: Set<Int>, snapshot: [[SlotSymbol]]) -> [[SlotSymbol]] {
         var grid = freshGrid()
-        for c in holding {
-            for r in 0..<3 {
-                grid[r][c] = snapshot[r][c]
-            }
+        for index in locking {
+            let row = index / 3
+            let col = index % 3
+            grid[row][col] = snapshot[row][col]
         }
         return grid
     }
@@ -1093,11 +1384,15 @@ final class GameStore: ObservableObject {
         return "\(parts.year ?? 0)-\(parts.month ?? 0)-\(parts.day ?? 0)"
     }
 
-    static func mockGrid() -> [[SlotSymbol]] {
+    static func starterGrid() -> [[SlotSymbol]] {
         [
-            [.cherry, .lemon, .orange],
-            [.grape, .melon, .bell],
-            [.star, .bar, .seven]
+            [.cherry, .cherry, .lemon],
+            [.orange, .grape, .orange],
+            [.lemon, .bell, .star]
         ]
+    }
+
+    static func mockGrid() -> [[SlotSymbol]] {
+        starterGrid()
     }
 }

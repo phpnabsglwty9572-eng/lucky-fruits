@@ -2,10 +2,16 @@ import SwiftUI
 
 struct HomeView: View {
     @EnvironmentObject private var store: GameStore
+    @Environment(\.displayScale) private var displayScale
     @State private var glow = false
     @State private var showStart = false
     @State private var showSettings = false
     @State private var showPrivacy = false
+
+    private let logoPixels = CGSize(width: 648, height: 356)
+    private let startPixels = CGSize(width: 598, height: 226)
+    private let settingsPixels = CGSize(width: 258, height: 80)
+    private let privacyPixels = CGSize(width: 241, height: 70)
 
     var body: some View {
         GeometryReader { geo in
@@ -13,6 +19,7 @@ struct HomeView: View {
             ZStack {
                 Image("imgLoadBg")
                     .resizable()
+                    .interpolation(.high)
                     .scaledToFill()
                     .frame(width: size.width, height: size.height)
                     .clipped()
@@ -22,14 +29,7 @@ struct HomeView: View {
                 } else if Lucky.isLandscape(size) {
                     landscapeHome(size: size)
                 } else {
-                    phoneHome
-                        .frame(width: Lucky.canvas.width, height: Lucky.canvas.height)
-                        .scaleEffect(
-                            x: Lucky.canvasScale(for: size).width,
-                            y: Lucky.canvasScale(for: size).height,
-                            anchor: .center
-                        )
-                        .frame(width: size.width, height: size.height)
+                    phoneHome(size: size)
                 }
                 if let gift = store.daily {
                     DailyGiftOverlay(gift: gift)
@@ -48,62 +48,54 @@ struct HomeView: View {
         }
     }
 
-    private var phoneHome: some View {
-        ZStack {
-            Image("imgHomeLogo")
-                .resizable()
-                .interpolation(.high)
-                .scaledToFit()
-                .frame(width: 326, height: 175)
-                .shadow(color: Lucky.gold.opacity(glow ? 0.55 : 0.16), radius: glow ? 20 : 6)
-                .offset(y: glow ? -5 : 4)
-                .position(x: 26 + 326 / 2, y: 66 + 175 / 2)
-
-            startButton
-                .scaleEffect(showStart ? 1 : 0.82)
-                .opacity(showStart ? 1 : 0)
-                .offset(y: showStart ? 0 : 26)
-                .position(x: 39 + 298 / 2, y: 269 + 114 / 2)
-
-            settingsButton
-                .scaleEffect(showSettings ? 1 : 0.86)
-                .opacity(showSettings ? 1 : 0)
-                .offset(y: showSettings ? 0 : 20)
-                .position(x: 58 + 261 / 2, y: 410 + 78 / 2)
-
-            privacyButton
-                .scaleEffect(showPrivacy ? 1 : 0.88)
-                .opacity(showPrivacy ? 1 : 0)
-                .offset(y: showPrivacy ? 0 : 18)
-                .position(x: 69 + 241 / 2, y: 519 + 70 / 2)
+    private func phoneHome(size: CGSize) -> some View {
+        let logo = homeArt(logoPixels, maxWidth: size.width * 0.84, maxUpscale: 1.15)
+        let start = homeArt(startPixels, maxWidth: size.width * 0.8, maxUpscale: 1.2)
+        let settings = homeArt(settingsPixels, maxWidth: size.width * 0.72, maxUpscale: 1.65)
+        let privacy = homeArt(privacyPixels, maxWidth: size.width * 0.68, maxUpscale: 1.85)
+        return VStack(spacing: 0) {
+            Spacer(minLength: size.height * 0.05)
+            logoImage(logo)
+            Text("KEEP · RESTOCK · SERVE")
+                .font(Lucky.black(13))
+                .tracking(2.4)
+                .foregroundStyle(Lucky.goldSoft.opacity(0.9))
+                .padding(.top, 10)
+            Spacer(minLength: 18)
+            VStack(spacing: 14) {
+                startButton(start)
+                    .scaleEffect(showStart ? 1 : 0.82)
+                    .opacity(showStart ? 1 : 0)
+                settingsButton(settings)
+                    .scaleEffect(showSettings ? 1 : 0.86)
+                    .opacity(showSettings ? 1 : 0)
+                privacyButton(privacy)
+                    .scaleEffect(showPrivacy ? 1 : 0.88)
+                    .opacity(showPrivacy ? 1 : 0)
+            }
+            Spacer(minLength: size.height * 0.07)
         }
-        .frame(width: 375, height: 667)
+        .frame(width: size.width, height: size.height)
     }
 
     private func padHome(size: CGSize) -> some View {
         VStack(spacing: 0) {
             Spacer(minLength: 24)
-            Image("imgHomeLogo")
-                .resizable()
-                .interpolation(.high)
-                .scaledToFit()
-                .frame(width: min(520, size.width * 0.62), height: min(260, size.height * 0.28))
-                .shadow(color: Lucky.gold.opacity(glow ? 0.55 : 0.16), radius: glow ? 20 : 6)
-                .offset(y: glow ? -4 : 4)
-            Text("HARVEST · SWAP · BLEND")
+            logoImage(homeArt(logoPixels, maxWidth: min(420, size.width * 0.56), maxUpscale: 1.15))
+            Text("KEEP · RESTOCK · SERVE")
                 .font(Lucky.black(16))
                 .tracking(3)
                 .foregroundStyle(Lucky.goldSoft.opacity(0.9))
                 .padding(.top, 8)
             Spacer(minLength: 20)
             VStack(spacing: 18) {
-                startButton
+                startButton(homeArt(startPixels, maxWidth: 340, maxUpscale: 1.15))
                     .scaleEffect(showStart ? 1 : 0.82)
                     .opacity(showStart ? 1 : 0)
-                settingsButton
+                settingsButton(homeArt(settingsPixels, maxWidth: 300, maxUpscale: 1.65))
                     .scaleEffect(showSettings ? 1 : 0.86)
                     .opacity(showSettings ? 1 : 0)
-                privacyButton
+                privacyButton(homeArt(privacyPixels, maxWidth: 280, maxUpscale: 1.85))
                     .scaleEffect(showPrivacy ? 1 : 0.88)
                     .opacity(showPrivacy ? 1 : 0)
             }
@@ -124,17 +116,8 @@ struct HomeView: View {
     private func landscapeHome(size: CGSize) -> some View {
         HStack(alignment: .center, spacing: 28) {
             VStack(spacing: 12) {
-                Image("imgHomeLogo")
-                    .resizable()
-                    .interpolation(.high)
-                    .scaledToFit()
-                    .frame(
-                        width: min(Lucky.isPad ? 520 : 440, size.width * 0.44),
-                        height: min(Lucky.isPad ? 280 : 236, size.height * 0.46)
-                    )
-                    .shadow(color: Lucky.gold.opacity(glow ? 0.55 : 0.16), radius: glow ? 20 : 6)
-                    .offset(y: glow ? -4 : 4)
-                Text("HARVEST · SWAP · BLEND")
+                logoImage(homeArt(logoPixels, maxWidth: min(Lucky.isPad ? 420 : 300, size.width * 0.4), maxUpscale: 1.15))
+                Text("KEEP · RESTOCK · SERVE")
                     .font(Lucky.black(14))
                     .tracking(3)
                     .foregroundStyle(Lucky.goldSoft.opacity(0.9))
@@ -142,13 +125,13 @@ struct HomeView: View {
             .frame(maxWidth: .infinity)
 
             VStack(spacing: 16) {
-                startButton
+                startButton(homeArt(startPixels, maxWidth: min(320, size.width * 0.34), maxUpscale: 1.15))
                     .scaleEffect(showStart ? 1 : 0.82)
                     .opacity(showStart ? 1 : 0)
-                settingsButton
+                settingsButton(homeArt(settingsPixels, maxWidth: min(280, size.width * 0.3), maxUpscale: 1.65))
                     .scaleEffect(showSettings ? 1 : 0.86)
                     .opacity(showSettings ? 1 : 0)
-                privacyButton
+                privacyButton(homeArt(privacyPixels, maxWidth: min(260, size.width * 0.28), maxUpscale: 1.85))
                     .scaleEffect(showPrivacy ? 1 : 0.88)
                     .opacity(showPrivacy ? 1 : 0)
             }
@@ -168,7 +151,23 @@ struct HomeView: View {
         .frame(width: size.width, height: size.height)
     }
 
-    private var startButton: some View {
+    private func homeArt(_ pixels: CGSize, maxWidth: CGFloat, maxUpscale: CGFloat) -> CGSize {
+        let sharp = pixels.width / max(displayScale, 1)
+        let width = min(maxWidth, sharp * maxUpscale)
+        return CGSize(width: width, height: width * pixels.height / pixels.width)
+    }
+
+    private func logoImage(_ size: CGSize) -> some View {
+        Image("imgHomeLogo")
+            .resizable()
+            .interpolation(.high)
+            .scaledToFit()
+            .frame(width: size.width, height: size.height)
+            .shadow(color: Lucky.gold.opacity(glow ? 0.45 : 0.14), radius: glow ? 14 : 5)
+            .offset(y: glow ? -4 : 3)
+    }
+
+    private func startButton(_ size: CGSize) -> some View {
         Button {
             store.audio.click()
             withAnimation { store.route = .modes }
@@ -178,16 +177,15 @@ struct HomeView: View {
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
-                    .frame(width: 298, height: 114)
-                EdgeLights(width: 302, height: 118, corner: 59, count: 24, speed: 0.42)
+                    .frame(width: size.width, height: size.height)
+                EdgeLights(width: size.width + 4, height: size.height + 4, corner: (size.height + 4) / 2, count: 22, speed: 0.42)
             }
-            .shadow(color: Lucky.gold.opacity(glow ? 0.7 : 0.22), radius: glow ? 16 : 6)
-            .scaleEffect(glow ? 1.04 : 1.0)
+            .shadow(color: Lucky.gold.opacity(glow ? 0.55 : 0.18), radius: glow ? 12 : 5)
         }
         .buttonStyle(PressScale())
     }
 
-    private var settingsButton: some View {
+    private func settingsButton(_ size: CGSize) -> some View {
         Button {
             store.audio.click()
             store.showSettings = true
@@ -197,16 +195,16 @@ struct HomeView: View {
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
-                    .frame(width: 258, height: 80)
-                EdgeLights(width: 262, height: 84, corner: 12, count: 16, speed: 0.28)
+                    .frame(width: size.width, height: size.height)
+                EdgeLights(width: size.width + 4, height: size.height + 4, corner: 10, count: 16, speed: 0.28)
                     .opacity(0.85)
             }
-            .shadow(color: Lucky.gold.opacity(glow ? 0.35 : 0.08), radius: glow ? 10 : 3)
+            .shadow(color: Lucky.gold.opacity(glow ? 0.28 : 0.08), radius: glow ? 8 : 3)
         }
         .buttonStyle(PressScale())
     }
 
-    private var privacyButton: some View {
+    private func privacyButton(_ size: CGSize) -> some View {
         Button {
             store.audio.click()
             store.showPrivacy = true
@@ -216,11 +214,11 @@ struct HomeView: View {
                     .resizable()
                     .interpolation(.high)
                     .scaledToFit()
-                    .frame(width: 241, height: 70)
-                EdgeLights(width: 245, height: 74, corner: 10, count: 14, speed: 0.24)
+                    .frame(width: size.width, height: size.height)
+                EdgeLights(width: size.width + 4, height: size.height + 4, corner: 8, count: 14, speed: 0.24)
                     .opacity(0.75)
             }
-            .shadow(color: Lucky.gold.opacity(glow ? 0.28 : 0.06), radius: glow ? 8 : 2)
+            .shadow(color: Lucky.gold.opacity(glow ? 0.22 : 0.06), radius: glow ? 6 : 2)
         }
         .buttonStyle(PressScale())
     }

@@ -74,12 +74,13 @@ struct GameView: View {
                     .position(x: 187.5, y: 90)
             }
 
-            betChip(top: "BET", bottom: "10", selected: store.bet == 10) { store.setBet(10) }
-                .position(x: 19 + 37, y: 468 + 35)
-            betChip(top: "BET", bottom: "50", selected: store.bet == 50) { store.setBet(50) }
-                .position(x: 99 + 37, y: 468 + 35)
-            betChip(top: "MAX", bottom: "BET", selected: store.bet != 10 && store.bet != 50) { store.setBet(100) }
-                .position(x: 178 + 37, y: 468 + 35)
+            controlRow(spacing: 6)
+                .position(x: 136, y: 503)
+
+            if store.isWager, store.canServe {
+                servePill
+                    .position(x: 187.5, y: 452)
+            }
 
             spinButton
                 .position(x: 254 + 55.5, y: 448 + 55.5)
@@ -175,16 +176,12 @@ struct GameView: View {
     }
 
     private var padBetRow: some View {
-        HStack(spacing: 20) {
-            betChip(top: "BET", bottom: "10", selected: store.bet == 10) { store.setBet(10) }
-                .scaleEffect(1.22)
-                .frame(width: 90, height: 86)
-            betChip(top: "BET", bottom: "50", selected: store.bet == 50) { store.setBet(50) }
-                .scaleEffect(1.22)
-                .frame(width: 90, height: 86)
-            betChip(top: "MAX", bottom: "BET", selected: store.bet != 10 && store.bet != 50) { store.setBet(100) }
-                .scaleEffect(1.22)
-                .frame(width: 90, height: 86)
+        VStack(spacing: 14) {
+            if store.isWager, store.canServe {
+                servePill
+            }
+            controlRow(spacing: 16)
+                .scaleEffect(1.12)
             spinButton
                 .scaleEffect(1.28)
                 .frame(width: 148, height: 148)
@@ -229,11 +226,10 @@ struct GameView: View {
                     .scaleEffect(reelScale)
                     .frame(width: 335 * reelScale, height: 341 * reelScale)
                 VStack(spacing: 16) {
-                    HStack(spacing: 12) {
-                        betChip(top: "BET", bottom: "10", selected: store.bet == 10) { store.setBet(10) }
-                        betChip(top: "BET", bottom: "50", selected: store.bet == 50) { store.setBet(50) }
-                        betChip(top: "MAX", bottom: "BET", selected: store.bet != 10 && store.bet != 50) { store.setBet(100) }
+                    if store.isWager, store.canServe {
+                        servePill
                     }
+                    controlRow(spacing: 12)
                     spinButton
                 }
             }
@@ -252,7 +248,9 @@ struct GameView: View {
 
     @ViewBuilder
     private var overlays: some View {
-        if store.showWinBurst {
+        if store.showCoach {
+            CoachOverlay()
+        } else if store.showWinBurst {
             WinBurstOverlay(amount: store.lastWin, title: store.burstTitle, subtitle: store.burstSubtitle)
                 .onTapGesture { withAnimation { store.dismissWinBurst() } }
         } else if store.showBlendPick {
@@ -264,17 +262,29 @@ struct GameView: View {
 
     private var harvestBar: some View {
         HStack(spacing: 8) {
-            if store.mode == .classic {
-                ForEach(store.orders) { order in
-                    orderChip(order)
-                }
-            } else {
-                Text("Hit the goal · SWAP two fruits after a miss")
+            if store.mode == .stage {
+                Text(store.currentStage?.blurb ?? "Keep fruits, restock the rest, then SERVE a line")
                     .font(Lucky.bold(Lucky.isPad ? 14 : 11))
                     .foregroundStyle(Lucky.goldSoft)
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, minHeight: Lucky.isPad ? 54 : 44, alignment: .leading)
                     .padding(.horizontal, 10)
+            } else {
+                if store.mode == .classic {
+                    VStack(spacing: 1) {
+                        Text("SHIFT")
+                            .font(Lucky.bold(Lucky.isPad ? 10 : 8))
+                            .foregroundStyle(Lucky.goldSoft)
+                        Text("\(store.shiftNumber)")
+                            .font(Lucky.black(Lucky.isPad ? 16 : 13))
+                            .foregroundStyle(Lucky.gold)
+                    }
+                    .frame(width: Lucky.isPad ? 54 : 40, height: Lucky.isPad ? 54 : 44)
+                    .background(Lucky.wine.opacity(0.95), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+                ForEach(visibleOrders) { order in
+                    orderChip(order)
+                }
             }
             Button {
                 store.audio.click()
@@ -308,8 +318,19 @@ struct GameView: View {
         )
     }
 
+    private var visibleOrders: [HarvestOrder] {
+        if store.mode == .classic {
+            let cover = store.orders.filter { $0.kind == .coverShift && !$0.done }
+            let plates = store.menu.filter { !$0.done }
+            if cover.isEmpty { return plates }
+            return cover + Array(plates.prefix(2))
+        }
+        return store.orders.filter { $0.kind != .coverShift }
+    }
+
     private func orderChip(_ order: HarvestOrder) -> some View {
-        HStack(spacing: 5) {
+        let cover = order.kind == .coverShift
+        return HStack(spacing: 5) {
             if let symbol = order.symbol {
                 Image(symbol.asset)
                     .resizable()
@@ -322,18 +343,57 @@ struct GameView: View {
                     .foregroundStyle(Lucky.gold)
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
-                Text(order.progress)
+                Text(cover ? "\(order.progress) · +\(order.reward)" : order.progress)
                     .font(Lucky.bold(Lucky.isPad ? 11 : 9))
                     .foregroundStyle(Lucky.goldSoft)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
             }
         }
         .padding(.horizontal, Lucky.isPad ? 10 : 7)
         .frame(maxWidth: .infinity, minHeight: Lucky.isPad ? 54 : 44, maxHeight: Lucky.isPad ? 54 : 44, alignment: .leading)
-        .background(Lucky.wine.opacity(0.72), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .background(Lucky.wine.opacity(cover ? 0.95 : 0.72), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .stroke(Lucky.gold.opacity(0.28), lineWidth: 1)
+                .stroke(Lucky.gold.opacity(cover ? 0.9 : 0.28), lineWidth: cover ? 1.5 : 1)
         )
+    }
+
+    private func controlRow(spacing: CGFloat) -> some View {
+        HStack(spacing: spacing) {
+            if store.isWager {
+            actionChip(top: "BET", bottom: "10", selected: store.bet == 10) { store.setBet(10) }
+            actionChip(top: "BET", bottom: "50", selected: store.bet == 50) { store.setBet(50) }
+            actionChip(top: "MAX", bottom: "BET", selected: store.bet == 100) { store.setBet(100) }
+        } else {
+            actionChip(top: "SERVE", bottom: store.canServe ? "READY" : "LINE", selected: store.canServe) {
+                store.serve()
+            }
+            actionChip(top: "SWAP", bottom: store.swapsLeft > 0 ? "\(store.swapsLeft)" : "0", selected: store.swapMode) {
+                store.toggleSwapMode()
+            }
+            actionChip(top: "CLEAR", bottom: "KEEP", selected: !store.lockedCells.isEmpty) {
+                store.clearLocks()
+            }
+            }
+        }
+    }
+
+    private var servePill: some View {
+        Button {
+            store.serve()
+        } label: {
+            Text("SERVE")
+                .font(Lucky.black(13))
+                .tracking(1.2)
+                .foregroundStyle(Lucky.gold)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 8)
+                .background(Lucky.wine.opacity(0.95), in: Capsule())
+                .overlay(Capsule().stroke(Lucky.gold, lineWidth: 1.5))
+                .shadow(color: Lucky.gold.opacity(0.45), radius: 6)
+        }
+        .buttonStyle(PressScale())
     }
 
     private var bannerChip: some View {
@@ -366,6 +426,12 @@ struct GameView: View {
                     .scaledToFit()
                     .frame(width: 111, height: 111)
                     .rotationEffect(.degrees(store.isSpinning ? 0 : (store.canSpin ? (pulse ? -6 : 5) : 0)))
+                Text("STOCK")
+                    .font(Lucky.black(11))
+                    .tracking(1)
+                    .foregroundStyle(Lucky.goldSoft)
+                    .shadow(color: .black.opacity(0.7), radius: 2, y: 1)
+                    .offset(y: 28)
             }
             .shadow(
                 color: Lucky.gold.opacity(store.isSpinning ? 0.85 : (store.canSpin ? (pulse ? 0.75 : 0.28) : 0.08)),
@@ -399,11 +465,11 @@ struct GameView: View {
                 .scaledToFit()
                 .frame(width: 135, height: 55)
             VStack(spacing: 0) {
-                Text(store.mode == .stage ? "GOAL" : (store.inBonus ? "FREE" : "COINS"))
+                Text(store.mode == .stage ? "GOAL" : (store.isWager ? "BET \(store.bet)" : "SCORE"))
                     .font(Lucky.bold(8))
                     .tracking(1.6)
                     .foregroundStyle(Lucky.goldSoft.opacity(0.92))
-                Text(store.mode == .stage ? "\(store.stageWon)/\(store.stageTarget)" : (store.inBonus ? "\(store.freeSpinsLeft)" : "\(store.coins)"))
+                Text(store.mode == .stage ? "\(store.stageWon)/\(store.stageTarget)" : "\(store.coins)")
                     .font(Lucky.black(18))
                     .foregroundStyle(Lucky.gold)
                     .minimumScaleFactor(0.45)
@@ -456,7 +522,7 @@ struct GameView: View {
                 ForEach(0..<3, id: \.self) { c in
                     let index = r * 3 + c
                     let hit = store.hitCells.contains(index)
-                    let held = store.heldColumns.contains(c)
+                    let kept = store.lockedCells.contains(index)
                     let picked = store.swapPicked == index
                     Button {
                         store.tapCell(index)
@@ -466,49 +532,38 @@ struct GameView: View {
                                 .resizable()
                                 .scaledToFit()
                                 .padding(4)
-                                .blur(radius: held ? 0 : store.reelBlur)
-                                .offset(y: held ? 0 : (store.spinningColumn == c ? 8 : 0))
+                                .blur(radius: kept ? 0 : store.reelBlur)
+                                .offset(y: kept ? 0 : (store.spinningColumn == c ? 8 : 0))
                                 .animation(.easeInOut(duration: 0.07), value: store.spinningColumn)
+                            if kept, !store.isSpinning {
+                                Text("KEEP")
+                                    .font(Lucky.black(8))
+                                    .tracking(0.6)
+                                    .foregroundStyle(Lucky.gold)
+                                    .padding(.horizontal, 5)
+                                    .padding(.vertical, 2)
+                                    .background(Lucky.wine.opacity(0.92), in: Capsule())
+                                    .offset(y: cellH[r] / 2 - 14)
+                            }
                         }
                         .frame(width: cellW, height: cellH[r])
                         .overlay(
                             RoundedRectangle(cornerRadius: 8)
                                 .stroke(
-                                    picked ? Lucky.goldSoft : (held ? Lucky.gold : (hit && !store.isSpinning ? Lucky.gold : Color.clear)),
-                                    lineWidth: picked || held || hit ? 2.5 : 0
+                                    picked ? Lucky.goldSoft : (kept ? Lucky.gold : (hit && !store.isSpinning ? Lucky.gold : Color.clear)),
+                                    lineWidth: picked || kept || hit ? 2.5 : 0
                                 )
                                 .shadow(
-                                    color: (picked || held || hit) && !store.isSpinning ? Lucky.gold.opacity(0.9) : .clear,
+                                    color: (picked || kept || hit) && !store.isSpinning ? Lucky.gold.opacity(0.9) : .clear,
                                     radius: pulse ? 10 : 4
                                 )
                         )
                         .scaleEffect(picked ? 1.06 : (hit && !store.isSpinning ? (pulse ? 1.04 : 1.0) : 1))
                     }
                     .buttonStyle(.plain)
-                    .disabled(!store.canSwap)
+                    .disabled(!store.canAct)
                     .offset(x: cols[c], y: rows[r])
                 }
-            }
-
-            ForEach(0..<3, id: \.self) { c in
-                let held = store.heldColumns.contains(c)
-                Button {
-                    store.toggleHold(c)
-                } label: {
-                    RoundedRectangle(cornerRadius: 10, style: .continuous)
-                        .fill(held ? Lucky.gold.opacity(0.16) : Color.white.opacity(0.001))
-                        .overlay(alignment: .bottom) {
-                            Text(held ? "HELD" : "HOLD")
-                                .font(Lucky.black(10))
-                                .tracking(1)
-                                .foregroundStyle(held ? Lucky.gold : Lucky.goldSoft.opacity(store.canHold ? 0.55 : 0))
-                                .padding(.bottom, 5)
-                        }
-                }
-                .buttonStyle(.plain)
-                .disabled(!store.canHold)
-                .frame(width: cellW, height: store.canSwap ? 20 : 252)
-                .offset(x: cols[c], y: store.canSwap ? 320 : rows[0])
             }
         }
         .frame(width: 335, height: 341)
@@ -536,7 +591,7 @@ struct GameView: View {
         .position(x: x + w / 2, y: y + h / 2)
     }
 
-    private func betChip(top: String, bottom: String, selected: Bool, action: @escaping () -> Void) -> some View {
+    private func actionChip(top: String, bottom: String, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             ZStack {
                 Image("btnBetPlate")
@@ -552,7 +607,7 @@ struct GameView: View {
                         .font(Lucky.black(11))
                         .tracking(0.6)
                     Text(bottom)
-                        .font(Lucky.black(15))
+                        .font(Lucky.black(13))
                 }
                 .foregroundStyle(Lucky.gold)
                 .shadow(color: .black.opacity(0.45), radius: 1, y: 1)
@@ -568,7 +623,7 @@ struct GameView: View {
             .scaleEffect(selected ? (pulse ? 1.08 : 1.03) : 1)
         }
         .buttonStyle(PressScale())
-        .disabled(store.isSpinning || store.inBonus)
-        .opacity(store.inBonus ? 0.45 : 1)
+        .disabled(!store.canAct)
+        .opacity(store.canAct ? 1 : 0.45)
     }
 }

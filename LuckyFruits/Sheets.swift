@@ -162,6 +162,11 @@ struct RulesSheet: View {
                             .padding(.top, 4)
                         Text("Swap two neighboring fruits on a 7×7 board. Three in a line crush. Four clear the whole row or column. Five clear every fruit of that kind. Crush score is local. About one eighth banks into your kitchen score, plus a small tip when you clear a level.")
                             .foregroundStyle(Lucky.cream)
+                        Text("Ring Chase")
+                            .foregroundStyle(Lucky.gold)
+                            .padding(.top, 4)
+                        Text("A ring of fruit cells. Pick a wish fruit and a bet of 10, 50, or 100. Start Chase runs the light clockwise. Tap again to stop. The cell you land on pays that bet times its multiplier into your score. Each stop on the wish fruit fills its set. Three fills pay +500, then the set starts over.")
+                            .foregroundStyle(Lucky.cream)
                     }
                     .font(Lucky.bold(15))
                     .padding(20)

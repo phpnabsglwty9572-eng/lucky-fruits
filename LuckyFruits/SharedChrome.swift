@@ -13,6 +13,7 @@ struct RootView: View {
             case .game: GameView()
             case .window: WindowView()
             case .crush: CrushView()
+            case .chase: ChaseView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

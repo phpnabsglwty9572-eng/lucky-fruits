@@ -95,6 +95,16 @@ struct ModeSelectView: View {
                             withAnimation { store.route = .crush }
                         }
                         modeCard(
+                            title: "Ring Chase",
+                            subtitle: "Stop the lights on a wish fruit",
+                            footnote: "Bet 10 / 50 / 100 · the cell you land on pays",
+                            width: 314,
+                            height: 86
+                        ) {
+                            store.audio.click()
+                            withAnimation { store.route = .chase }
+                        }
+                        modeCard(
                             title: "Marquee",
                             subtitle: "Same board, restock costs a bet",
                             footnote: "Bet 10 / 50 / 100 · serve pays the bet",
@@ -185,15 +195,27 @@ struct ModeSelectView: View {
                         withAnimation { store.route = .crush }
                     }
                 }
-                modeCard(
-                    title: "Marquee",
-                    subtitle: "Restock costs a bet",
-                    footnote: "10 / 50 / 100",
-                    width: min(cardWidth(size) * 2 + (Lucky.isPad ? 18 : 12), size.width - 56),
-                    height: min(108, cardHeight(size))
-                ) {
-                    store.audio.click()
-                    withAnimation { store.openBet() }
+                HStack(spacing: Lucky.isPad ? 18 : 12) {
+                    modeCard(
+                        title: "Marquee",
+                        subtitle: "Restock costs a bet",
+                        footnote: "10 / 50 / 100",
+                        width: cardWidth(size),
+                        height: cardHeight(size)
+                    ) {
+                        store.audio.click()
+                        withAnimation { store.openBet() }
+                    }
+                    modeCard(
+                        title: "Ring Chase",
+                        subtitle: "Stop the lights",
+                        footnote: "10 / 50 / 100",
+                        width: cardWidth(size),
+                        height: cardHeight(size)
+                    ) {
+                        store.audio.click()
+                        withAnimation { store.route = .chase }
+                    }
                 }
             }
             .padding(.horizontal, Lucky.isPad ? 56 : 28)

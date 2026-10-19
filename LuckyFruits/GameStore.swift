@@ -1,8 +1,8 @@
 import SwiftUI
 import UIKit
 
-enum AppRoute {
-    case loading, home, modes, stages, game, window, crush
+enum AppRoute: Equatable {
+    case loading, home, modes, stages, game, window, crush, chase
 }
 
 enum PlayMode {
